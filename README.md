@@ -27,7 +27,7 @@ data - The used data.
 
 ## contacts
 
-Jorma Laaksonen <jorma.laaksonen@aalto.fi>
+Jorma Laaksonen <<jorma.laaksonen@aalto.fi>>
 
 ## copyright
 
