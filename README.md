@@ -7,7 +7,7 @@ This repository relates to the book:
 Pirrko Suihkonen & Jorma Laaksonen (2023): Syntax and Semantics of
 Adpositions and Case Marking: Description of Prepositions in English
 and Adpositions and Case Marking in Finnish within the Framework of a
-Parallel Database. LINCOM Studies in Theoretical Linguitics. ISBN
+Parallel Database. LINCOM Studies in Theoretical Linguistics. ISBN
 978-3-96939-171-6. 332 pages.
 
 
