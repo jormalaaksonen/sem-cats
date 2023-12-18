@@ -1,0 +1,9 @@
+#P. Suihkonen, 24.11.2017
+#
+@go 
+go
+goest
+goeth
+gone
+went
+wentest

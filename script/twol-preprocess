@@ -1,0 +1,53 @@
+#! /usr/bin/perl -s
+
+my $vers = '$Id: twol-preprocess,v 1.3 2006/11/14 12:22:43 jtlaakso Exp $';
+
+use strict;
+use diagnostics;
+use bytes;
+
+use vars qw($help $version $copyright $dos);
+
+my $nl = "\n";
+
+if ($version) {
+  print $vers,$nl;
+  exit 0;
+}
+
+while (<>) {
+  chomp;
+
+  $_ = $1 if /(.*)\r$/;
+  $_ = $1 if /(.*)\032$/;
+
+  tr/\204\224\206\216\231\217/הצוִײֵ/ if $dos;
+
+  # tr/\204\224\229\214\216\197/הצוִײֵ/;
+  # tr/הצוִײֵ/{|}[\\]/;
+
+  while (/(.*)([A-Zִײֵ])(.*)/) {
+    my $c = $2;
+    if ($c eq 'ִ') {
+      $c = 'ה';
+    } elsif ($c eq 'ײ') {
+      $c = 'צ';
+    } elsif ($c eq 'ֵ') {
+      $c = 'ו';
+    } else {
+      $c = lc($c);
+    }
+    $_ = "$1*$c$3";
+  }
+
+  s/([<\(\[{])/$1 /g;
+
+  s/([>\)\]}%\.,!?:;])/ $1/g;
+
+  s/([=&"])/ $1 /g;
+
+  print $_.$nl;
+}
+
+
+

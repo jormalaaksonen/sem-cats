@@ -1,0 +1,3286 @@
+#! /appl/opt/perl/5.30.0/bin/perl -s
+
+#! /usr/bin/perl -s
+#! /projappl/project_2002035/localperl/bin/perl -s
+
+# xxx xxx xxx verb verb xxx xxx adpos adpos // dist==2
+# default: -dist=5
+# -dist=no
+
+# -run=main,detail -dist=5 -verb=tulla -book=42
+# -norm=nword/nverse
+# => kwic-fin-44-tulla-5++TRNS-INT-PRP.out
+
+my $vers = '$Id: kwic,v 1.165 2020/05/26 11:11:05 jlaakson Exp $';
+
+use strict;
+use diagnostics;
+use locale;
+use POSIX qw(locale_h ceil);
+
+use vars qw($help $version $copyright $dos $dump $lex $align
+	    $book $verse $rfin $reng $prim $exp $count $verify $spec
+            $rlist $hist $multi_old $debug $grep $mark $sample $inf
+            $dist $run $dir $norm $oldexcl $lang $verb $dat $dattype
+            $som $nowait $somexp $thresh $dryrun);
+
+$| = 1;
+
+my $nl = "\n";
+my $maxwords = 5;
+
+$multi_old |= 0;
+
+$dist = 5 unless defined $dist;
+$dist = -1 if $dist eq "no";
+
+$dir  = "."   unless defined $dir;
+$lang = ""    unless defined $lang;
+$verb = ""    unless defined $verb;
+$nowait = 0   unless defined $nowait;
+$somexp = 4   unless defined $somexp;
+$thresh = 0.5 unless defined $thresh;
+$dryrun = 0   unless defined $dryrun;
+
+$norm = "none"  if !$dat && !defined $norm;
+$norm = "nword" if  $dat && !defined $norm;
+die "-norm= should be none, nword[+l1] or nsente[+l1]" unless
+    $norm eq "none" || $norm eq "nword" || $norm eq "nsente"
+    || $norm eq "nword+l1" || $norm eq "nsente+l1";
+
+if ($version) {
+  print $vers,$nl;
+  exit 0;
+}
+
+my $exclude_shown = 0;
+
+my $nword  = 0;
+my $nsente = 0;
+
+setlocale(LC_CTYPE, "fi_FI.iso88591");
+
+my $swerr = (!defined $count && !defined $book ||
+	     !defined $rfin && !defined $reng) && $#ARGV<1;
+
+$swerr = 0 if $rlist || $verify || $run || $dat || $som;
+
+if ($help || $swerr) {
+  print STDERR "USAGE: $0 [-dos] [-dump] [-lex=1|2|3] [-align] PRE+POST",
+    " 'PATTERN ...' [file ...]$nl";
+  print STDERR "   OR: $0 [-dump] [-lex=1|2|3] [-align] [-hist] -book=xx",
+    " -rfin=PATTERN -reng=PATTERN PRE+POST$nl";
+  print STDERR "   OR: $0 -run=main|detail|all [–dir=ddd] [-book=xx] [-lang=yyy] [-verb=zzz]$nl";
+  print STDERR "   OR: $0 -dat=per-book|per-verb... [-dir=ddd]$nl";
+  print STDERR "   OR: $0 -rlist=lang$nl";
+  print STDERR "   OR: $0 -verify$nl";
+  exit 1;
+}
+
+#if (defined $ENV{SLURM_JOB_ID}) {
+#  print "SLURM_JOB_ID=$ENV{SLURM_JOB_ID} [$0] [".join("][", @ARGV)."]\n";
+#}
+
+if ($verify) {
+    print "Perl version $^V in $^X$nl";
+    print "Verifying locale \"", setlocale(LC_CTYPE), "\"";
+    if ("\344" =~ /\w/) { # should be "assa" =~ /\w\w\w\w/
+	print " ... good$nl";
+    } else {
+	print " ... failed$nl";
+	exit 1;
+    }
+
+    print "Verifying bug #12989";
+    my @a = "riiaan" =~ /.*?(xs|p)*(a(a)|i(i))n/;
+    if (defined $a[3]) {
+	print " ... NOT corrected\n";
+    } else {
+	print " ... IS corrected\n";
+    }
+
+    exit verify_regexps() ? 0 : 1;
+}
+
+if (defined $rlist) {
+    my @l = rule_list($rlist);
+    print join("\n", @l, "");
+    exit 0;
+}
+
+if (defined $run) {
+  run($run);
+  exit 0;
+}
+
+die "-dattype=xxx not used anymore, specify -dat=xxx\n" if defined $dattype;
+
+if (defined $dat) {
+  die "Give -dat=per-book|per-verb-main|per-verb-main3|per-verb-detail\n" 
+      unless $dat eq "per-book" || $dat eq "per-verb-main" || 
+      $dat eq "per-verb-main3" || $dat eq "per-verb-detail";
+  dat($dat);
+  exit 0;
+}
+
+if (defined $som) {
+  som($som);
+  exit 0;
+}
+
+$lex   = 0      unless defined $lex;
+$prim  = "fin"  unless defined $prim;
+$exp   = 3      unless defined $exp;
+$count = 0      unless defined $count;
+
+my $prepost = shift;
+
+if ($prepost !~ /^(\d+)\+(\d+)$/) {
+  print "$0 : failed to parse PRE+POST from [$prepost]$nl";
+  exit 1;
+}
+my ($pre, $post) = ( $1, $2 );
+
+my %grepset;
+my $grepreg;
+if ($grep) {
+  my $gfile = "../spec/$grep";
+  if (!-e $gfile) {
+    $grepreg = latin1($grep);
+    print "GREP regexp set to <$grepreg>\n" if $dump;
+
+  } else {
+    my @aa = `cat $gfile`;
+    if (!@aa) {
+      print "$0 : failed to read file <$gfile>$nl";
+      exit 1;
+    }
+    chomp @aa;
+    foreach my $a ( @aa ) {
+      $a =~ s/\s*#.*$//;
+      next if $a =~ /^\s*$/;
+      print "[$a]\n" if $dump;
+      $grepset{latin1($a)} = 1;
+    }
+    print "GREP set contains ", scalar(keys %grepset), " rules from <$gfile>\n"
+	if $dump;
+  }
+}
+
+my %markset;
+my $markreg;
+if ($mark) {
+  my $gfile = "../spec/$mark";
+  if (!-e $gfile) {
+    $markreg = latin1($mark);
+    print "MARK regexp set to <$markreg>\n" if $dump;
+
+  } else {
+    my @aa = `cat $gfile`;
+    if (!@aa) {
+      print "$0 : failed to read file <$gfile>$nl";
+      exit 1;
+    }
+    chomp @aa;
+    foreach my $a ( @aa ) {
+      $a =~ s/\s*#.*$//;
+      next if $a =~ /^\s*$/;
+      print "[$a]\n" if $dump;
+      $markset{latin1($a)} = 1;
+    }
+    print "MARK set contains ", scalar(keys %markset), " rules from <$gfile>\n"
+	if $dump;
+  }
+}
+
+my @lines;
+my @lines2;
+my %parts;
+my %count;
+my %lexkey1;
+my %lexkey2;
+my %lexkey3;
+my ($maxpre, $maxmid) = (0, 0);
+
+my %hist;
+my %collochist;
+my $use_colloc = 0;
+
+my %inf;
+
+if ($count && (!defined $book ||
+	       ($rfin||"") eq "ALL" || ($reng||"") eq "ALL")) {
+  do_count($rfin, $reng, $book);
+  exit 0;
+}
+
+if (!defined $book) {
+  my $pat = shift;
+  my $exppat = expand_pattern($pat, $prim, $exp);
+  do_kwic($exppat);
+
+} else {
+  my $exprfin = expand_pattern_comma_slash_pp($rfin, "fin", $exp);
+  my $expreng = expand_pattern_comma_slash_pp($reng, "eng", $exp);
+  my $cnt = fin_eng($book, $verse, $rfin, $exprfin, $reng, $expreng);
+  print $cnt, $nl if $count;
+
+  if ($hist) {
+    my %ehist = %hist;
+    %ehist = %collochist if $use_colloc;
+    print "MATCH histogram:$nl";
+    my @skeys = sort keys %ehist;
+    @skeys = sort { $ehist{$b} <=> $ehist{$a} } keys %ehist if $hist eq "dec";
+
+    my $normx = $norm;
+    $normx = $1 if $normx =~ /^(.*)\+l1$/;
+    my $tot = 0;
+    foreach my $k ( @skeys ) {
+      my $v = $ehist{$k};
+      $v = (1.0*$v)/$nword  if $normx eq "nword";
+      $v = (1.0*$v)/$nsente if $normx eq "nsente";
+      $tot += $v;
+      $v =~ s/,/./g;
+      print utf8($k), " : $v$nl";
+    }
+
+    $tot =~ s/,/./g;
+    my $rrfin = $rfin || "";
+    my $rreng = $reng || "";
+    print "TOTAL $book [$rrfin] [$rreng] ",
+    "(norm=$normx : nsente=$nsente nword=$nword) : $tot$nl";
+  }
+}
+
+exit 0;
+
+#------------------------------------------------------------------------------
+
+sub spec_name {
+  my $lang = shift;
+  my $add  = shift;
+  my $name = $lang;
+  $name .= "-$add" if defined $add;
+  return "../spec/$name.spec";
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_pattern_comma_slash_pp {
+  my ($patin, $lang, $exp) = @_;
+
+  return undef unless defined $patin;
+
+  my $r = "";
+  my @aa = split(/\+\+/, $patin);
+  foreach my $a ( @aa ) {
+      my $s = expand_pattern_comma_slash($a, $lang, $exp);
+      $r .= ($r ne ""?"++":"").$s;
+  }
+  $use_colloc = 1 if $#aa>0;
+
+  my $retshow = utf8($r);
+  print "RULE-EXP-COMMA-SLASH-PP /$patin/ -> /$retshow/$nl" if $dump;
+
+  return $r;
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_pattern_comma_slash {
+  my ($patin, $lang, $exp) = @_;
+
+  return undef unless defined $patin;
+
+  my $r = "";
+  my @aa = split(/\//, $patin);
+  foreach my $a ( @aa ) {
+      my $s = expand_pattern_comma($a, $lang, $exp);
+      if ($s=~/[[:upper:]]/) {
+	print STDERR "Rule <$a> did not expand or contains uppercases\n";
+	exit 1;
+      }
+
+      $r .= ($r ne ""?"/":"").$s;
+  }
+
+  my $retshow = utf8($r);
+  print "RULE-EXP-COMMA-SLASH /$patin/ -> /$retshow/$nl" if $dump;
+
+  return $r;
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_pattern_comma {
+  my ($patin, $lang, $exp) = @_;
+
+  return undef unless defined $patin;
+
+  my $r = "";
+  my @aa = split(/,/, $patin);
+  foreach my $a ( @aa ) {
+      my $s = expand_pattern($a, $lang, $exp);
+      $r .= ($r ne ""?",":"").$s;
+  }
+
+  return $r;
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_pattern {
+  my ($patinx, $lang, $exp) = @_;
+
+  return $patinx unless defined $patinx && $patinx =~ /^[A-Z][A-Z0-9-]*$/;
+
+  my $patin = $patinx;
+  if ($patin =~ /(.*)-X$/) {
+    $patin = $1;
+  }
+  
+  my $specf = spec_name($lang);
+  open(SPECF, $specf) || return $patin;
+  my $ret = $patin;
+  my %keyval;
+
+  my @specfr = <SPECF>;
+  close SPECF;
+
+  my @specfa;
+  push @specfa, eng_verbs_all() if $lang eq "eng";
+  push @specfa, fin_verbs_all() if $lang eq "fin";
+  #
+  # push @specfa, wn_verb() if $lang eq "eng";
+  
+  foreach $_ ( @specfr ) {
+    $_ =~ s/\R//g;
+    print "LLL <$_>$nl" if $debug;
+    if (/^INCLUDE:\s*([^\s]*)$/) {
+      my $ifile = "../spec/$1";
+      print "  Including <$ifile>\n" if $debug;
+      my @stmp = `cat $ifile`;
+      chomp @stmp;
+      push @specfa, @stmp;
+    } elsif (
+      /^INCLUDELIST:\s*([^\s]+)\s+([A-Z][A-Z0-9@-]*)(\s+([A-Z][A-Z0-9-]*))?/) {
+        my $ifile = "../spec/$1";
+	my ($rn1, $rn2) = ($2, defined $4 ? $4 : "*undef*"); 
+	print "  Including list <$ifile> as $rn1 and $rn2\n" if $debug;
+	push @specfa, include_list($1, $2, $4);
+	    
+    } else {
+      push @specfa, $_;
+    }
+  }
+
+  my $lline = "";
+  my $found = 0;
+  my $nonempty = 0;
+  foreach $_ ( @specfa ) {
+    $_ =~ s/\R//g;
+    print "<$_>$nl" if $debug;
+    next if /^\s*$/ || /^#/;
+    if ($lline ne "" && /^[A-Z][A-Z0-9-]*:/) {
+      if ($lline =~ /^([A-Z][A-Z0-9-]*):\s*(.*?)\s*$/) {
+	my ($key, $val) = ($1, $2);
+	$keyval{$key} = $val if $val ne "";
+	if ($key eq $patin) {
+	  $found = 1;
+	  if ($val ne "") {
+	    $nonempty = 1;
+	    $ret = $val;
+	    $ret =~ s/^\s+$//;
+	  }
+	  print "LAST$nl" if $debug;
+	  last;
+	}
+      }
+      $lline = /^[A-Z][A-Z0-9-]*:/ ? $_ : "";
+      print "-[$lline]$nl" if $debug;
+      next;
+    }
+    $_ =~ s/^\s+//;
+    $_ =~ s/\s+$//;
+    $lline .= $_;
+    print "+[$lline]$nl" if $debug;
+  }
+
+  if (!$found) {
+    print STDERR "Regexp rule for $patin not found in $specf$nl";
+    exit(1);
+  }
+
+  $ret = "" unless $nonempty;
+
+  if ($ret =~ /^[A-Z]{3}:\s+(.*)/) {
+    $ret = $1;
+    my $has = ($ret =~ /\s*[A-Z]{3}:\s+/);
+    $ret =~ s/\s*[A-Z]{3}:\s+/|/g;
+    $ret = "($ret)" if $has;
+    print ">>>$ret$nl" if $debug;
+  }
+
+  if ($ret eq "") {
+    $ret = "^\$";
+
+  } else {
+    if ($exp==2 &&
+        defined $keyval{"POSS-SFX"} && defined $keyval{"CLT-SFX"}) {
+      $ret .= "POSS-SFX?CLT-SFX?";
+    }
+
+    if ($exp==1 || $exp==2) {
+      $ret = "\\w+$ret" if $patin =~ /-C$/;
+      $ret = "^$ret\$";
+    }
+
+    if ($exp==3) {
+      #$ret = "\\w+$ret";
+      #$ret = "^$ret\$";
+      if (substr($ret, 0, 2) eq "\\w") {
+        $ret = "$ret\$";
+      } else {
+	  if (substr($ret, 0, 1) eq "^") {
+	    $ret = "$ret\$"; # this added 2016-10-16
+	  } else {
+	    $ret = "^$ret\$"; # ^ added back for version 1.39/40 2016-04-07
+	  }
+      }
+    }
+  }
+
+  while ($ret =~ /^(.*?)([A-Z][A-Z0-9-]*)(.*?)$/) {
+      my ($pre, $key, $post) = ($1, $2, $3);
+      last unless defined $keyval{$key};
+      my $kkk = $keyval{$key};
+      if ($pre ne "" && $kkk=~/^\\w(.*)/) {
+	  $kkk = $1;
+      }
+      $ret = "$pre$kkk$post";
+  }
+
+  if ($patin ne $patinx) {
+    my $a = "";
+    my $o = "";
+    if (substr($ret, 0, 1) eq "^") {
+      $a = "^";
+      $ret = substr($ret, 1);
+    }
+    if (substr($ret, length($ret)-1) eq "\$") {
+      $b = "\$";
+      $ret = substr($ret, 0, length($ret)-1);
+    }
+    $ret = $a."(".$ret." (\\w+))".$b;
+  }
+  
+  my $retshow = utf8($ret);
+
+  print "RULE-EXP $lang: /$patinx/ -> /$retshow/$nl" if $debug;
+
+  return $ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_core {
+    my $s1 = shift;
+
+    my $s2 = join("(", split(/</, $s1));
+    my $ss = join(")", split(/>/, $s2));
+    my @r = ( $ss );
+
+    my $j = 1;
+    for (my $i=0; $i<length($s1); $i++) {
+	my $a = substr($s1, $i, 1);
+	if ($a eq "(" || $a eq "<") {
+	    push @r, $j if $a eq "<";
+	    $j++
+	}
+    }
+    
+    return @r;
+}
+
+#------------------------------------------------------------------------------
+
+sub utf8 {
+    my $s = shift;
+    $s =~ s/\304/\xc3\x84/g; # A umlaut
+    $s =~ s/\344/\xc3\xa4/g; # a umlaut
+    $s =~ s/\326/\xc3\x96/g; # O umlaut
+    $s =~ s/\366/\xc3\xb6/g; # o umlaut
+    return $s;
+}
+
+#------------------------------------------------------------------------------
+
+sub latin1 {
+    my $s = shift;
+    $s =~ s/\xc3\x84/\304/g; # A umlaut
+    $s =~ s/\xc3\xa4/\344/g; # a umlaut
+    $s =~ s/\xc3\x96/\326/g; # O umlaut
+    $s =~ s/\xc3\xb6/\366/g; # o umlaut
+    return $s;
+}
+
+#------------------------------------------------------------------------------
+
+sub ao2latin1 {
+    my $s = shift;
+    if (0) {
+      $s =~ s/A/\304/g; # A umlaut
+      $s =~ s/a/\344/g; # a umlaut
+      $s =~ s/O/\326/g; # O umlaut
+      $s =~ s/o/\366/g; # o umlaut
+    }
+    if (1) {
+      $s = "l\344hte\344"      if $s eq "lahtea";
+      $s = "j\344tt\344\344"   if $s eq "jattaa";
+      $s = "vied\344"          if $s eq "vieda";
+      $s = "l\344hett\344\344" if $s eq "lahettaa";
+      $s = "menn\344"          if $s eq "menna";
+      $s = "el\344\344"        if $s eq "elaa";
+      $s = "l\366yt\344\344"   if $s eq "loytaa";
+    }
+    return $s;
+}
+
+#------------------------------------------------------------------------------
+
+sub forms {
+  my $lang = shift;
+  my $specf = spec_name($lang);
+  open(SPECF, $specf) || return;
+
+  my @ret;
+
+  while (<SPECF>) {
+    next if /^\s*$/;
+    next if /^#/;
+    if (/^([A-Z-]+c?):/) {
+      my $k = $1;
+      next if $k =~ /-SFX$/;
+      push @ret, $k;
+    }
+  }
+  close SPECF;
+
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub do_kwic {
+  my $patin    = shift;
+  my @patlist  = split(/\s+/, $patin);
+  my $longline = "";
+
+  while (<>) {
+    chomp;
+
+    next if /^\| /;
+    next if /^\d\d\d:\d\d\d\s*$/;
+
+    tr/\204\224\206\216\231\217/\344\366\345\304\326\305/ if $dos;
+    s/\x0d$// if $dos;
+
+    s/^\d+\. +//;
+
+    $longline .= ($longline ne ""?" ":"").$_;
+
+    s/\s*$//;
+
+    my $x = substr($_, -1).$nl;
+    if ($x =~ /[a-zA-Z\344\366\345\304\326\305,-]/) {
+      next;
+    } else {
+      $_ = $longline;
+      $longline = "";
+    }
+
+    next if /^\s*$/;
+
+    my $rule = "RULE";
+    my $xid  = "XID";
+    my @add_list = split_n_process_outer("xxx", "yyy", $rule, $xid, 
+					 $_, @patlist);
+    foreach my $a ( @add_list ) {
+      add(@$a, 1);
+    }
+  }
+  show_result(0, 1);
+}
+
+#------------------------------------------------------------------------------
+
+sub pick_words {
+  my $r = shift;
+  my @a = @{$r};
+  my $d = "[".join(" ", @{$a[0]})."] $a[1] $a[2]";
+  my @w = @{shift @a};
+  my @ret = ( join(" ", @w[$a[0]..$a[1]]), $a[0], $a[1] );
+  print "pick_words() : $d => ", join(" ", @ret), "\n" if $dump;
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub split_n_process_outer {
+  my $lang = shift;
+  my $book = shift;
+  my $rule = shift;
+  my $xid  = shift;
+  $_ = shift;
+  my @patlist = @_;
+
+  die "split_n_process_outer() assumed \$#patlist==0, was ".$#patlist
+      unless $#patlist==0 || !defined $rule;
+
+  my @pp = ();
+  @pp = split(/\+\+/, $patlist[0]) if defined $rule;
+  
+  my @rr = ( undef );
+  @rr = split(/\+\+/, $rule) if defined $rule;
+
+  die "split_n_process_outer() assumed \$#pp==\$#rr, was \$#pp==$#pp ".
+      "\$#rr==$#rr" unless $#pp==$#rr || !defined $rule;
+
+  $use_colloc = 1 if $#pp>0;
+
+  my %hit_x;
+  my %hit_t;
+  my %hit_r;
+  print "COLLOC-0 $xid\n" if $dump;
+  foreach my $ri ( 0 .. $#rr ) {
+    my @pl = ();
+    @pl = ($pp[$ri]) if defined $rule;
+    my @zza = split_n_process($lang, $book, $rr[$ri], $xid, $_, @pl);
+    $hit_x{$rr[$ri]} = 1 if defined $rr[$ri]; 
+    print "COLLOC-1a $ri\n" if $dump;
+    foreach my $za ( @zza ) {
+      my @a = @$za;
+      my $sid = $a[3];
+      my @y1 = @a;
+      my @y2 = @{shift @y1};
+      print "COLLOC-1b $ri $sid ", ($rr[$ri]||"UNDEF"), " <", join("><", @y1),
+      "> [", join("][", @y2), "]\n" if $dump;
+      next if $y1[0]==-1;
+      $hit_t{$sid} = {} unless defined $hit_t{$sid};
+      if (defined $rr[$ri]) {
+	${$hit_t{$sid}}{$rr[$ri]} = [] unless defined ${$hit_t{$sid}}{$rr[$ri]};
+	push @{${$hit_t{$sid}}{$rr[$ri]}}, [ @a ];
+      }
+      $hit_r{$sid} = [ @a ];
+    }
+  }
+  my $rtxt = join(" ", sort keys %hit_x);
+  my @ret;
+  foreach my $k (sort keys %hit_t) {
+    my $rj = join(" ", sort keys %{$hit_t{$k}});
+    print "COLLOC-2 $k <$rj>\n" if $dump;
+    if ($rj eq $rtxt) {
+      my @x = @{$hit_r{$k}};
+      my @y1 = @x;
+      my @y2 = @{shift @y1};
+      print "COLLOC-3 <", join("><", @y1), "> [", join("][", @y2), "]\n"
+	  if $dump;
+      push @ret, [ @x ];
+      print "COLLOC HIT  $rule $k ", utf8(join(" ", @{$x[0]})), "\n"
+	if defined $rule && !$hist;
+      if (scalar(keys %{$hit_t{$k}})==2) {
+	print "COLLOC-4 $rule $k ", utf8(join(" ", @{$x[0]})), "\n"
+	    if defined $rule && $dump;
+	my @comb = ( [], [] );
+	my @kk = sort keys %{$hit_t{$k}};
+	my $k1i = 0;
+	foreach my $k1 ( @kk ) {
+	  print "COLLOC-5 $k1i $k1 [$rj]\n" if $dump;
+	  my $ri = 0;
+	  foreach my $k2 ( @{${$hit_t{$k}}{$rr[$k1i]}} ) {
+	    my @pwa = pick_words($k2);
+	    my $pw = join("/", @pwa);
+	    print "COLLOC-6   $k1 [$pw]\n" if $dump;
+	    push @{$comb[$k1i]}, $pw;
+	  }
+	  $k1i++;
+	}
+	print "COLLOC-7 <", join("><", @{$comb[0]}), "> x <",
+	join("><", @{$comb[1]}), ">\n" if $dump;
+	for my $w1x ( @{$comb[0]} ) {
+	  for my $w2x ( @{$comb[1]} ) {
+	    my ($w1, $w1b, $w1e) = split(/\//, $w1x);
+	    my ($w2, $w2b, $w2e) = split(/\//, $w2x);
+	    my $dd = $w2b-$w1e-1;
+	    print "COLLOC-8a ",
+	    utf8("[$w1 $w1b $w1e] [$w2 $w2b $w2e] $dd $dist"), "\n" if $dump;
+	    if ($dist>=0 && ($dd<0 || $dd>$dist)) {
+	      print "COLLOC-8b REJECTED\n" if $dump;
+	      next;
+	    }
+	    my ($w1i, $w2i) = ($w1, $w2);
+	    $w1i = $inf{$w1i} if $inf && defined $inf{$w1i};
+	    #INFING DISABLED $w2i = $inf{$w2i} if $inf && defined $inf{$w2i};
+	    if ($dump) {
+	      print "INF MAP ".utf8($w1)." -> ".utf8($w1i)."\n" if $w1i ne $w1;
+	      print "INF MAP ".utf8($w2)." -> ".utf8($w2i)."\n" if $w2i ne $w2;
+	    }
+	    my $pair  = "$w1i ++ $w2i";
+	    my $w1u   = utf8($w1);
+	    my $w2u   = utf8($w2);
+	    my $pairu = utf8($pair);
+	    print "COLLOC PAIR $w1u ++ $w2u => $pairu\n" if !$hist || $dump;
+	    $collochist{$pair}++ if $hist;
+	  }
+	}
+      }
+    }
+  }
+  
+  return @ret;
+}
+    
+#------------------------------------------------------------------------------
+
+sub split_n_process {
+  my $lang = shift;
+  my $book = shift;
+  my $rule = shift;
+  my $xid  = shift;
+  $_ = shift;
+  my @patlist = @_;
+
+  my $showline = utf8($_);
+  print "LONGLINE $lang =[$showline]$nl" if $dump;
+
+  return process_sentence($lang, $book, $rule, "$xid.1", $_, @patlist) 
+      unless @patlist;
+
+  my @ret;
+  my @subparts = split(/(\.|\?|!|:|\d\d\d:\d\d\d)/, $_);
+
+  my $i = 1;
+  foreach $_ ( @subparts ) {
+    push @ret, process_sentence($lang, $book, $rule, "$xid.$i", $_, @patlist);
+    $i++;
+  }
+
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub process_sentence {
+  return $oldexcl ? process_sentence_old(@_) : process_sentence_new(@_);
+}
+
+#------------------------------------------------------------------------------
+
+sub process_sentence_new {
+  my $lang = shift;
+  my $book = shift;
+  my $rule = shift;
+  my $sid  = shift;
+  $_ = shift;
+  my @patlist = @_;
+
+  my $multi_new = !$multi_old;
+  
+  $rule = "" unless defined $rule;
+
+  s/^\s*(.*?)\s*$/$1/;
+
+  s/\d\d\d:\d\d\d//g;
+
+  s/\.//g;
+  s/\?//g;
+  s/,//g;
+  s/://g;
+  s/;//g;
+  s/\(//g;
+  s/\)//g;
+  s/\"//g;
+  s/\'//g;
+  s/\x1a//g;
+
+  s/ - / /g;
+  s/^- //;
+  s/!//g;
+
+  $_ = lc $_;
+  tr/\304\326\305/\344\366\345/;
+
+  s/  / /g;
+  s/^ //;
+
+  return () if /^\s*$/;
+  return () if /^\d+$/;
+
+  my $showline = utf8($_);
+  print "   SENTENCE=[$showline]$nl" if $dump;
+
+  my @words = split(/\s+/, $_);
+  #print(utf8("[[[$_]]] ").scalar(@words)."\n");
+  $nsente += 1;
+  $nword  += scalar(@words);
+  
+  my @hitpats;
+  my @ret;
+  my @core;
+
+  my $gfound = 1;
+  if ($grep) {
+    $gfound = 0;
+    foreach my $w ( @words ) {
+      my $ws = utf8($w);
+      if (defined $grepset{$w}) {
+	print "GREP file matched word <$ws> in [$showline]\n" if $debug;
+	$gfound = 1;
+	last;
+      }
+      if (defined $grepreg && $w =~ /$grepreg/) {
+	print "GREP regexp |$grepreg| matched <$ws> in [$showline]\n" if $debug;
+	$gfound = 1;
+	last;
+      }
+    }
+  }
+  if (!$gfound) {
+    print "GREP not matched in [$showline]\n" if $debug;
+    return ();
+  }
+
+  my $marktxt = "";
+  my $mfound = 1;
+  if ($mark) {
+    $mfound = 0;
+    foreach my $w ( @words ) {
+      my $ws = utf8($w);
+      if (defined $markset{$w}) {
+	print "MARK file matched word <$ws> in [$showline]\n" if $debug;
+	$mfound = 1;
+	$marktxt .= ($marktxt eq "" ? "" : " ").$ws;
+      }
+      if (defined $markreg && $w =~ /$markreg/) {
+	print "MARK regexp |$markreg| matched <$ws> in [$showline]\n" if $debug;
+	$mfound = 1;
+	$marktxt .= ($marktxt eq "" ? "" : " ").$ws;
+      }
+    }
+  }
+  if (!$mfound) {
+    print "MARK not matched in [$showline]\n" if $debug;
+    return ();
+  }
+
+  print "RULE=$rule LANG=$lang PATLIST=[",utf8(join("][", @patlist)),"]$nl" 
+      if $dump; 
+
+  my $maxrn = length($rule);
+
+  my $exclude_r;
+  my $exclude_n;
+
+  my @pat_r_split;
+  my @pat_n_split;
+  my %pathash;
+  if (@patlist==1) {
+    my $patlistzerox = $patlist[0];
+    @core = expand_core($patlistzerox);
+    my $patlistzero = shift @core;
+    my $pl0showx = utf8($patlistzerox);
+    my $pl0show  = utf8($patlistzero);
+    if (($pl0show ne $pl0showx) && $dump) {
+	print "CORE /$pl0showx/ -> /$pl0show/ idx <", join("><", @core), ">\n";
+    }
+
+    my $rulex = $rule;
+
+    my @a = split(/\//, $patlistzero);
+    if (@a==2) {
+      $patlistzero = $a[0];
+      $exclude_r = $a[1];
+     #$exclude_r = substr($exclude_r, 1) if substr($exclude_r, 0, 1) eq "^";
+      print "EXCLUDE-RULE: /".utf8($exclude_r)."/\n" if $dump;
+    }
+    @a = split(/\//, $rulex);
+    if (@a==2) {
+      $rulex = $a[0];
+      $exclude_n = $a[1];
+      print "EXCLUDE-NAME: $exclude_n\n" if $dump;
+      $exclude_shown = 1;
+    }
+
+    $maxrn = 0;
+    @pat_r_split = split(/,/, $patlistzero);
+    @pat_n_split = split(/,/, $rulex);
+    die unless $#pat_r_split==$#pat_n_split;
+    foreach my $i ( 0 .. $#pat_r_split ) {
+	$pathash{$pat_n_split[$i]} = $pat_r_split[$i];
+	my $l = length($pat_n_split[$i]);
+	$maxrn = $l if $l>$maxrn;
+    }
+  }
+
+  #print "maxrn=$maxrn\n";
+
+  if (@patlist) {
+  OUTER: for (my $i=0; $i<@words; $i++) {
+      my $contlen = 0;
+      
+      if (@patlist>1) {
+	for (my $j=$i; $j-$i<@patlist; $j++) {
+	  next OUTER if $j == @words;
+	  next OUTER if $words[$j] !~ /$patlist[$j-$i]/;
+	}
+	$contlen = @patlist;
+
+      } else {
+	my $wordcomb = "";
+	my $hit = 0;
+	for (my $j=$i; $j-$i<$maxwords && $j<@words; $j++) {
+	  last if $multi_old && $hit;
+
+	  $contlen++;
+	  $wordcomb .= ($wordcomb ne "" ? " " : "").$words[$j];
+
+	  foreach my $pi ( 0 .. $#pat_r_split ) {
+	    my $pr = $pat_r_split[$pi];
+	    my $pn = $pat_n_split[$pi];
+
+	    my $prx = "($pr)";
+	    $prx = "^[^ ]*?($pr)" if substr($pr, 0, 2) eq "\\w";
+
+	    $prx =~ s/\\w/\[\\w\344\366\]/g;
+
+	    if ($dump) {
+		my $wcbs = utf8($wordcomb);
+		my $prs = utf8($pr);
+		my $prxs = utf8($prx);
+		print " wordcomb=[$wcbs] pr=[$prs] prx=[$prxs] pn=[$pn]$nl";
+	    }
+
+	    my @capture = $wordcomb =~ /($prx)/;
+	    if (@capture) {
+	      my $match = $2;
+
+	      my $corehit = "";
+	      my $corerep = "";
+	      if (@core) {
+		  for (my $c=0; $c<@core; $c++) {
+		      my $xx = $core[$c]+1;
+		      my $xc = $capture[$xx];
+		      my $ccc = defined $xc ? $xc : "";
+		      my $cccs = utf8($ccc);
+		      my $caps = utf8($capture[1]);
+		      my $ccr = "";
+		      $ccr = substr($wordcomb, $-[2], $-[$xx+1]-$-[2]).
+			  "<".substr($wordcomb, $-[$xx+1], $+[$xx+1]-$-[$xx+1]).
+			  ">".substr($wordcomb, $+[$xx+1], $+[2]-$+[$xx+1]) 
+			  if $ccc ne "";
+		      my $ccrs = utf8($ccr);
+		      my $coa = $ccc ne "" ? $-[$xx+1] : "-";
+		      my $cob = $ccc ne "" ? $+[$xx+1] : "-";
+		      print " ccc $xx $-[0] $+[0] $coa $cob [$caps]".
+			  " <$cccs> [$ccrs]\n" if $dump;
+		      if ($ccc ne "") {
+			  die "DOUBLE CORE HIT [$caps] <$corehit> <$ccc> ".
+			      "[$corerep] [$ccr]" if $corehit ne "";
+			  $corehit = $ccc;
+			  $corerep = $ccr;
+		      }
+		  }
+	      }
+	      
+	      my $showcomb    = utf8($wordcomb);
+	      my $showmatch   = utf8($match);
+	      my $showcorehit = utf8($corehit);
+	      my $scr         = utf8($corerep);
+	      print " xxx $pn \"$showcomb\" -> [$showmatch] -> <$showcorehit> ".
+		  "[$scr]$nl" if $dump;
+	      print " zzz $pn \"$showcomb\" -> [$showmatch] -> <$showcorehit> ".
+		  "[$scr]$nl" if $dump && $showcomb ne $showmatch;
+
+	      if (defined $exclude_r) {
+		my $wchit = 0;
+		for (my $wcl=$j-$i+1; $wcl<=$maxwords; $wcl++) {
+		  for (my $wclbx=-$wcl+1+$j-$i; $wclbx<=0; $wclbx++) {
+		    my $wclb = $i+$wclbx;
+		    my $wcle = $wclb+$wcl-1;
+		    if ($wclb>=0 && $wcle<=$#words) {
+		      my $wcexcl = join(' ', @words[$wclb..$wcle]);
+		      print " xyz $i $j $wcl $wclb $wcle [$wordcomb] -> [$wcexcl] $nl" if $dump;
+		      if ($wcexcl =~ /($exclude_r)/) {
+			my $exc_match = $1;
+			print " yyy $exclude_n [",utf8($exc_match),"]$nl" if $dump;
+			$wchit = 1;
+		      }
+		    }
+		  }
+		  last if $wchit;
+		}
+		next if $wchit;
+	      }
+
+	      if ($multi_new && $hit) {
+		my $rem = pop @hitpats;
+		print " rrx [", join('][', @$rem), "]\n" if $dump;
+	      }
+	      $hit = 1;
+	      push @hitpats, [$i, $j, $pn, $match, $corehit, $corerep];
+	      print " rrr $i $j $pn [",utf8($match),"] -> <",utf8($corehit),
+	      "> hitpats size=", scalar(@hitpats), "\n" if $dump;
+	    }
+	  }
+	  print "out of loop 2$nl" if $dump;
+	}
+	print "out of loop 1$nl" if $dump;
+	next unless $hit;
+      }
+
+      # obs!  replaced by www-3+4 below
+      # print "www-1 [", utf8(join("][",@words)),"] $i ", $i+$contlen-1, $nl
+      # 	  if $dump;
+      # push @ret, [ \@words, $i, $i+$contlen-1, $sid ];
+    }
+
+  } else {
+    # obs!  replaced by www-3+4 below
+    # print "www-2 [",join("][",@words),"] 0 ", $#words, $nl if $dump;
+    # push @ret, [ \@words, 0, $#words, $sid ];
+  }
+
+  my %doneword;
+  my @words_show = @words;
+  my $yesno = "no ";
+  my $ruleshow = $rule;
+  my $hitlen = $maxwords-1;
+  while (@hitpats) {
+      while (1) {
+	  my $found = 0;
+	  foreach my $i ( @hitpats ) {
+	      my @pat = @$i;
+	      print " iii $hitlen $pat[0] $pat[1] $pat[2] ".
+		  "[$pat[3]] <$pat[4]> ($pat[5])$nl" if $dump;
+	      unless ($pat[1]-$pat[0]==$hitlen) {
+		print " lll next a\n" if $dump;
+		next;
+	      }
+	      $found = 1;
+	      my $patn = $pat[2];
+	      my $patx = $pat[3];
+	      my $patc = $pat[4];
+	      my $patr = $pat[5];
+	      my $paty = $patx;
+	      if (@patlist==1 && substr($pathash{$patn}, 0, 2) eq "\\w") {
+		  $paty = substr($paty, 1);
+		  $patr = substr($patr, 1) if length($patr)>0; # bug?
+	      }
+	      my $patz = $patr; # obs! was earlier like $paty...
+	      $patz = $patx if $patz eq "";
+	      my $patzi = $patz;
+	      #INFING DISABLED $patzi = $inf{$patzi} if $inf && defined $inf{$patzi};
+	      print "INF MAP ".utf8($patz)." -> ".utf8($patzi)."\n"
+		  if $dump && $patzi ne $patz;
+	      print " hhh [$pat[0] $pat[1] \"", utf8($patx), "\"] -> ",
+	        utf8($paty), " <", utf8($patc), "> (", utf8($patr), ") [",
+		  $patz, "] [[", $patzi,"]]$nl" if $dump;
+	      
+	      $hist{$patzi}++; # obs!
+
+	      print "www-3 [", utf8(join("][",@words)), "] $pat[0] ",
+	      $pat[1], $nl if $dump;
+	      push @ret, [ \@words, $pat[0], $pat[1], $sid ];
+
+	      if ($multi_new) {
+		my $skip = 0;
+		for (my $ssi=$pat[0]; $ssi<=$pat[1]; $ssi++) {
+		  $skip = 1 if defined $doneword{$ssi};
+		}
+		if ($skip) {
+		  if ($dump) {
+		    my $w = join (' ', @words_show[$pat[0]..$pat[1]]);
+		    print " cc0 [$w][$paty][$patc] already done\n";
+		  }
+		} else {
+		  if ($pat[0]==$pat[1]) {
+		    my $w = $words_show[$pat[0]];
+		    print " cc1 [$w][$paty][$patc]\n" if $dump;
+		    if ($w =~ /(.*)($paty)$/) {
+		      my ($a, $b) = ($1, $2);
+		      if ($patc ne "" && $b =~ /(.*)($patc)(.*)/) {
+			#my ($c, $d, $e) = ($1, $2, $3);
+			#print " ddd ${a}[$b] -> ${a}[$c<$d>$e]\n";
+			#$b = "$c<$d>$e ($patr)";
+			print " ddd ${a}[$b] -> ${a}[$patr]\n" if $dump;
+			$b = $patr;
+		      }
+		      $words_show[$pat[0]] = $a."[$b]";
+		      $yesno = "yes";
+		      $ruleshow = $patn;
+		    }
+		  } else {
+		    my $w = join (' ', @words_show[$pat[0]..$pat[1]]);
+		    print " cc2 [$w][$paty][$patc]\n" if $dump;
+		    if ($w =~ /^$paty$/) {
+		      print " dd2 [$w][$paty]\n" if $dump;
+		      $words_show[$pat[0]] = "[".$words_show[$pat[0]];
+		      $words_show[$pat[1]] = $words_show[$pat[1]]."]";
+		      $yesno = "yes";
+		      $ruleshow = $patn;
+		    }
+		  }
+		  for (my $ssi=$pat[0]; $ssi<=$pat[1]; $ssi++) {
+		    $doneword{$ssi} = 1;
+		  }
+		}
+	      }
+	      
+	      if ($multi_old) {
+		foreach my $j ( $pat[0] ... $pat[1] ) {
+		  my $w = $words_show[$j];
+		  print " dd1 [$w][$paty]\n" if $dump;
+		  if ($w =~ /(.*)($paty)$/) {
+		    my ($a, $b) = ($1, $2);
+		    if ($patc ne "" && $b =~ /(.*)($patc)(.*)/) {
+		      #my ($c, $d, $e) = ($1, $2, $3);
+		      #print " ddd ${a}[$b] -> ${a}[$c<$d>$e]\n";
+		      #$b = "$c<$d>$e ($patr)";
+		      print " ddd ${a}[$b] -> ${a}[$patr]\n" if $dump;
+		      $b = $patr;
+		    }
+		    $words_show[$j] = $a."[$b]";
+		    $yesno = "yes";
+		    $ruleshow = $patn;
+		  }
+		}
+	      }
+
+	      my @newhitpats;
+	      foreach my $j ( @hitpats ) {
+		  my @newpat = @$j;
+		  if ($newpat[0]<=$pat[0] && $newpat[1]>=$pat[1]) {
+		    print " lll next b\n" if $dump;
+		    next;
+		  }
+		  push @newhitpats, [@$j];
+	      }
+	      @hitpats = @newhitpats;
+	      print " lll last a\n" if $dump;
+	      last;
+	  }
+	  print " lll last b\n" if $dump;
+	  last unless $found;
+      }
+      my $hitlenwas = $hitlen;
+      $hitlen--;
+      print " lll hitlen: $hitlenwas->$hitlen\n" if $dump;
+      last if $hitlen<0;
+      #last;
+  }
+
+  $ruleshow = sprintf "%-*s", $maxrn, $ruleshow;
+  unshift @words_show, $book;
+  print "MATCH $ruleshow $lang $yesno: ", utf8(join(" ", @words_show)), $nl
+      unless $hist;
+
+  if ($yesno eq "yes" && defined $mark) {
+    print "MARK $ruleshow $lang: [$marktxt] ", utf8(join(" ", @words_show)), $nl
+	unless $hist;
+  }
+
+  if ($yesno eq "yes" && ($pre>0 || $post>0)) {
+    print "CONTEXT $ruleshow $lang: ", utf8(join(" ", @words_show)), $nl
+	unless $hist;
+  }
+
+  if ($#ret<0) {
+    print "www-4 [",join("][",@words),"] 0 ", $#words, $nl if $dump;
+    #push @ret, [ \@words, 0, $#words, $sid ];
+    push @ret, [ \@words, -1, -1, $sid ];
+  }
+
+  return @ret;
+}
+
+
+#------------------------------------------------------------------------------
+
+sub process_sentence_old {
+  #print "process_sentence_old()\n";
+
+  my $lang = shift;
+  my $book = shift;
+  my $rule = shift;
+  my $sid  = shift;
+  $_ = shift;
+  my @patlist = @_;
+
+  my $multi_new = !$multi_old;
+  
+  $rule = "" unless defined $rule;
+
+  s/^\s*(.*?)\s*$/$1/;
+
+  s/\d\d\d:\d\d\d//g;
+
+  s/\.//g;
+  s/\?//g;
+  s/,//g;
+  s/://g;
+  s/;//g;
+  s/\(//g;
+  s/\)//g;
+  s/\"//g;
+  s/\'//g;
+  s/\x1a//g;
+
+  s/ - / /g;
+  s/^- //;
+  s/!//g;
+
+  $_ = lc $_;
+  tr/\304\326\305/\344\366\345/;
+
+  s/  / /g;
+  s/^ //;
+
+  return () if /^\s*$/;
+  return () if /^\d+$/;
+
+  my $showline = utf8($_);
+  print "   SENTENCE=[$showline]$nl" if $dump;
+
+  my @words = split(/\s+/, $_);
+  #print(utf8("[[[$_]]] ").scalar(@words)."\n");
+  $nsente += 1;
+  $nword  += scalar(@words);
+  
+  my @hitpats;
+  my @ret;
+  my @core;
+
+  my $gfound = 1;
+  if ($grep) {
+    $gfound = 0;
+    foreach my $w ( @words ) {
+      my $ws = utf8($w);
+      if (defined $grepset{$w}) {
+	print "GREP file matched word <$ws> in [$showline]\n" if $debug;
+	$gfound = 1;
+	last;
+      }
+      if (defined $grepreg && $w =~ /$grepreg/) {
+	print "GREP regexp |$grepreg| matched <$ws> in [$showline]\n" if $debug;
+	$gfound = 1;
+	last;
+      }
+    }
+  }
+  if (!$gfound) {
+    print "GREP not matched in [$showline]\n" if $debug;
+    return ();
+  }
+
+  my $marktxt = "";
+  my $mfound = 1;
+  if ($mark) {
+    $mfound = 0;
+    foreach my $w ( @words ) {
+      my $ws = utf8($w);
+      if (defined $markset{$w}) {
+	print "MARK file matched word <$ws> in [$showline]\n" if $debug;
+	$mfound = 1;
+	$marktxt .= ($marktxt eq "" ? "" : " ").$ws;
+      }
+      if (defined $markreg && $w =~ /$markreg/) {
+	print "MARK regexp |$markreg| matched <$ws> in [$showline]\n" if $debug;
+	$mfound = 1;
+	$marktxt .= ($marktxt eq "" ? "" : " ").$ws;
+      }
+    }
+  }
+  if (!$mfound) {
+    print "MARK not matched in [$showline]\n" if $debug;
+    return ();
+  }
+
+  print "RULE=$rule LANG=$lang PATLIST=[",utf8(join("][", @patlist)),"]$nl" 
+      if $dump; 
+
+  my $maxrn = length($rule);
+
+  my $exclude_r;
+  my $exclude_n;
+
+  my @pat_r_split;
+  my @pat_n_split;
+  my %pathash;
+  if (@patlist==1) {
+    my $patlistzerox = $patlist[0];
+    @core = expand_core($patlistzerox);
+    my $patlistzero = shift @core;
+    my $pl0showx = utf8($patlistzerox);
+    my $pl0show  = utf8($patlistzero);
+    if (($pl0show ne $pl0showx) && $dump) {
+	print "CORE /$pl0showx/ -> /$pl0show/ idx <", join("><", @core), ">\n";
+    }
+
+    my $rulex = $rule;
+
+    my @a = split(/\//, $patlistzero);
+    if (@a==2) {
+      $patlistzero = $a[0];
+      $exclude_r = $a[1];
+     #$exclude_r = substr($exclude_r, 1) if substr($exclude_r, 0, 1) eq "^";
+      print "EXCLUDE-RULE: /".utf8($exclude_r)."/\n" if $dump;
+    }
+    @a = split(/\//, $rulex);
+    if (@a==2) {
+      $rulex = $a[0];
+      $exclude_n = $a[1];
+      print "EXCLUDE-NAME: $exclude_n\n" if $dump;
+      $exclude_shown = 1;
+    }
+
+    $maxrn = 0;
+    @pat_r_split = split(/,/, $patlistzero);
+    @pat_n_split = split(/,/, $rulex);
+    die unless $#pat_r_split==$#pat_n_split;
+    foreach my $i ( 0 .. $#pat_r_split ) {
+	$pathash{$pat_n_split[$i]} = $pat_r_split[$i];
+	my $l = length($pat_n_split[$i]);
+	$maxrn = $l if $l>$maxrn;
+    }
+  }
+
+  #print "maxrn=$maxrn\n";
+
+  if (@patlist) {
+  OUTER: for (my $i=0; $i<@words; $i++) {
+      my $contlen = 0;
+      
+      if (@patlist>1) {
+	for (my $j=$i; $j-$i<@patlist; $j++) {
+	  next OUTER if $j == @words;
+	  next OUTER if $words[$j] !~ /$patlist[$j-$i]/;
+	}
+	$contlen = @patlist;
+
+      } else {
+	my $wordcomb = "";
+	my $hit = 0;
+	for (my $j=$i; $j-$i<$maxwords && $j<@words; $j++) {
+	  last if $multi_old && $hit;
+
+	  $contlen++;
+	  $wordcomb .= ($wordcomb ne "" ? " " : "").$words[$j];
+
+	  foreach my $pi ( 0 .. $#pat_r_split ) {
+	    my $pr = $pat_r_split[$pi];
+	    my $pn = $pat_n_split[$pi];
+
+	    my $prx = "($pr)";
+	    $prx = "^[^ ]*?($pr)" if substr($pr, 0, 2) eq "\\w";
+
+	    $prx =~ s/\\w/\[\\w\344\366\]/g;
+
+	    if ($dump) {
+		my $wcbs = utf8($wordcomb);
+		my $prs = utf8($pr);
+		my $prxs = utf8($prx);
+		print " wordcomb=[$wcbs] pr=[$prs] prx=[$prxs] pn=[$pn]$nl";
+	    }
+
+	    my @capture = $wordcomb =~ /($prx)/;
+	    if (@capture) {
+	      my $match = $2;
+
+	      my $corehit = "";
+	      my $corerep = "";
+	      if (@core) {
+		  for (my $c=0; $c<@core; $c++) {
+		      my $xx = $core[$c]+1;
+		      my $xc = $capture[$xx];
+		      my $ccc = defined $xc ? $xc : "";
+		      my $cccs = utf8($ccc);
+		      my $caps = utf8($capture[1]);
+		      my $ccr = "";
+		      $ccr = substr($wordcomb, $-[2], $-[$xx+1]-$-[2]).
+			  "<".substr($wordcomb, $-[$xx+1], $+[$xx+1]-$-[$xx+1]).
+			  ">".substr($wordcomb, $+[$xx+1], $+[2]-$+[$xx+1]) 
+			  if $ccc ne "";
+		      my $ccrs = utf8($ccr);
+		      my $coa = $ccc ne "" ? $-[$xx+1] : "-";
+		      my $cob = $ccc ne "" ? $+[$xx+1] : "-";
+		      print " ccc $xx $-[0] $+[0] $coa $cob [$caps]".
+			  " <$cccs> [$ccrs]\n" if $dump;
+		      if ($ccc ne "") {
+			  die "DOUBLE CORE HIT [$caps] <$corehit> <$ccc> ".
+			      "[$corerep] [$ccr]" if $corehit ne "";
+			  $corehit = $ccc;
+			  $corerep = $ccr;
+		      }
+		  }
+	      }
+	      
+	      my $showcomb    = utf8($wordcomb);
+	      my $showmatch   = utf8($match);
+	      my $showcorehit = utf8($corehit);
+	      my $scr         = utf8($corerep);
+	      print " xxx $pn \"$showcomb\" -> [$showmatch] -> <$showcorehit> ".
+		  "[$scr]$nl" if $dump;
+	      print " zzz $pn \"$showcomb\" -> [$showmatch] -> <$showcorehit> ".
+		  "[$scr]$nl" if $dump && $showcomb ne $showmatch;
+
+	      if (defined $exclude_r) {
+         	if ($wordcomb =~ /($exclude_r)/) {
+		  my $exc_match = $1;
+		  print " yyy $exclude_n [",utf8($exc_match),"]$nl" if $dump;
+		  next;
+		}
+	      }
+
+	      if ($multi_new && $hit) {
+		my $rem = pop @hitpats;
+		print " rrx [", join('][', @$rem), "]\n" if $dump;
+	      }
+	      $hit = 1;
+	      push @hitpats, [$i, $j, $pn, $match, $corehit, $corerep];
+	      print " rrr $i $j $pn [",utf8($match),"] -> <",utf8($corehit),
+	      "> hitpats size=", scalar(@hitpats), "\n" if $dump;
+	    }
+	  }
+	  print "out of loop 2$nl" if $dump;
+	}
+	print "out of loop 1$nl" if $dump;
+	next unless $hit;
+      }
+
+      # obs!  replaced by www-3+4 below
+      # print "www-1 [", utf8(join("][",@words)),"] $i ", $i+$contlen-1, $nl
+      # 	  if $dump;
+      # push @ret, [ \@words, $i, $i+$contlen-1, $sid ];
+    }
+
+  } else {
+    # obs!  replaced by www-3+4 below
+    # print "www-2 [",join("][",@words),"] 0 ", $#words, $nl if $dump;
+    # push @ret, [ \@words, 0, $#words, $sid ];
+  }
+
+  my %doneword;
+  my @words_show = @words;
+  my $yesno = "no ";
+  my $ruleshow = $rule;
+  my $hitlen = $maxwords-1;
+  while (@hitpats) {
+      while (1) {
+	  my $found = 0;
+	  foreach my $i ( @hitpats ) {
+	      my @pat = @$i;
+	      print " iii $hitlen $pat[0] $pat[1] $pat[2] ".
+		  "[$pat[3]] <$pat[4]> ($pat[5])$nl" if $dump;
+	      unless ($pat[1]-$pat[0]==$hitlen) {
+		print " lll next a\n" if $dump;
+		next;
+	      }
+	      $found = 1;
+	      my $patn = $pat[2];
+	      my $patx = $pat[3];
+	      my $patc = $pat[4];
+	      my $patr = $pat[5];
+	      my $paty = $patx;
+	      if (@patlist==1 && substr($pathash{$patn}, 0, 2) eq "\\w") {
+		  $paty = substr($paty, 1);
+		  $patr = substr($patr, 1) if length($patr)>0; # bug?
+	      }
+	      my $patz = $patr; # obs! was earlier like $paty...
+	      $patz = $patx if $patz eq "";
+	      my $patzi = $patz;
+	      $patzi = $inf{$patzi} if $inf && defined $inf{$patzi};
+	      print " hhh [$pat[0] $pat[1] \"", utf8($patx), "\"] -> ",
+	        utf8($paty), " <", utf8($patc), "> (", utf8($patr), ") [",
+		  $patz, "] [[", $patzi,"]]$nl" if $dump;
+	      
+	      $hist{$patzi}++; # obs!
+
+	      print "www-3 [", utf8(join("][",@words)), "] $pat[0] ",
+	      $pat[1], $nl if $dump;
+	      push @ret, [ \@words, $pat[0], $pat[1], $sid ];
+
+	      if ($multi_new) {
+		my $skip = 0;
+		for (my $ssi=$pat[0]; $ssi<=$pat[1]; $ssi++) {
+		  $skip = 1 if defined $doneword{$ssi};
+		}
+		if ($skip) {
+		  if ($dump) {
+		    my $w = join (' ', @words_show[$pat[0]..$pat[1]]);
+		    print " cc0 [$w][$paty][$patc] already done\n";
+		  }
+		} else {
+		  if ($pat[0]==$pat[1]) {
+		    my $w = $words_show[$pat[0]];
+		    print " cc1 [$w][$paty][$patc]\n" if $dump;
+		    if ($w =~ /(.*)($paty)$/) {
+		      my ($a, $b) = ($1, $2);
+		      if ($patc ne "" && $b =~ /(.*)($patc)(.*)/) {
+			#my ($c, $d, $e) = ($1, $2, $3);
+			#print " ddd ${a}[$b] -> ${a}[$c<$d>$e]\n";
+			#$b = "$c<$d>$e ($patr)";
+			print " ddd ${a}[$b] -> ${a}[$patr]\n" if $dump;
+			$b = $patr;
+		      }
+		      $words_show[$pat[0]] = $a."[$b]";
+		      $yesno = "yes";
+		      $ruleshow = $patn;
+		    }
+		  } else {
+		    my $w = join (' ', @words_show[$pat[0]..$pat[1]]);
+		    print " cc2 [$w][$paty][$patc]\n" if $dump;
+		    if ($w =~ /^$paty$/) {
+		      print " dd2 [$w][$paty]\n" if $dump;
+		      $words_show[$pat[0]] = "[".$words_show[$pat[0]];
+		      $words_show[$pat[1]] = $words_show[$pat[1]]."]";
+		      $yesno = "yes";
+		      $ruleshow = $patn;
+		    }
+		  }
+		  for (my $ssi=$pat[0]; $ssi<=$pat[1]; $ssi++) {
+		    $doneword{$ssi} = 1;
+		  }
+		}
+	      }
+	      
+	      if ($multi_old) {
+		foreach my $j ( $pat[0] ... $pat[1] ) {
+		  my $w = $words_show[$j];
+		  print " dd1 [$w][$paty]\n" if $dump;
+		  if ($w =~ /(.*)($paty)$/) {
+		    my ($a, $b) = ($1, $2);
+		    if ($patc ne "" && $b =~ /(.*)($patc)(.*)/) {
+		      #my ($c, $d, $e) = ($1, $2, $3);
+		      #print " ddd ${a}[$b] -> ${a}[$c<$d>$e]\n";
+		      #$b = "$c<$d>$e ($patr)";
+		      print " ddd ${a}[$b] -> ${a}[$patr]\n" if $dump;
+		      $b = $patr;
+		    }
+		    $words_show[$j] = $a."[$b]";
+		    $yesno = "yes";
+		    $ruleshow = $patn;
+		  }
+		}
+	      }
+
+	      my @newhitpats;
+	      foreach my $j ( @hitpats ) {
+		  my @newpat = @$j;
+		  if ($newpat[0]<=$pat[0] && $newpat[1]>=$pat[1]) {
+		    print " lll next b\n" if $dump;
+		    next;
+		  }
+		  push @newhitpats, [@$j];
+	      }
+	      @hitpats = @newhitpats;
+	      print " lll last a\n" if $dump;
+	      last;
+	  }
+	  print " lll last b\n" if $dump;
+	  last unless $found;
+      }
+      my $hitlenwas = $hitlen;
+      $hitlen--;
+      print " lll hitlen: $hitlenwas->$hitlen\n" if $dump;
+      last if $hitlen<0;
+      #last;
+  }
+
+  $ruleshow = sprintf "%-*s", $maxrn, $ruleshow;
+  unshift @words_show, $book;
+  print "MATCH $ruleshow $lang $yesno: ", utf8(join(" ", @words_show)), $nl
+      unless $hist;
+
+  if ($yesno eq "yes" && defined $mark) {
+    print "MARK $ruleshow $lang: [$marktxt] ", utf8(join(" ", @words_show)), $nl
+	unless $hist;
+  }
+
+  if ($yesno eq "yes" && ($pre>0 || $post>0)) {
+    print "CONTEXT $ruleshow $lang: ", utf8(join(" ", @words_show)), $nl
+	unless $hist;
+  }
+
+  if ($#ret<0) {
+    print "www-4 [",join("][",@words),"] 0 ", $#words, $nl if $dump;
+    #push @ret, [ \@words, 0, $#words, $sid ];
+    push @ret, [ \@words, -1, -1, $sid ];
+  }
+
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub show_result {
+  my ($snd, $cnts, $pref) = @_;
+
+  my $sum = 0;
+  foreach my $k ( @lines ) {
+    $sum += $count{$k};
+  }
+
+  print "TOTAL=$sum in ", scalar(@lines), " contexts$nl" if $cnts;
+
+  my @sorted = sort {$count{$b}<=>$count{$a}} ($snd ? @lines2 : @lines);
+
+  my $href;
+  $href = \%lexkey1 if $lex==1;
+  $href = \%lexkey2 if $lex==2;
+  $href = \%lexkey3 if $lex==3;
+
+  @sorted = sort {$$href{$a} cmp $$href{$b}}
+    ($snd ? @lines2 : @lines) if $href;
+
+  foreach my $m ( @sorted ) {
+    my $mm = $m;
+    if ($align) {
+      my @p = @{$parts{$m}};
+      $mm = sprintf "%${maxpre}s %-${maxmid}s %s", $p[0], $p[1], $p[2];
+    }
+    my $showmm = utf8($mm);
+    if ($cnts) {
+      printf "%5d : $showmm$nl", $count{$m};
+    } else {
+      print "$pref$showmm$nl";
+    }
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub add {
+  my ($r, $aa, $bb, $sid, $primlang) = @_;
+  my @words = @$r;
+
+  my $a = $aa-$pre;
+  $a = 0 unless $a>0;
+
+  my $b = $bb+$post;
+  $b = $#words unless $b<$#words;
+
+  print "ADD $sid [",join("][", @words), "] ($aa $bb) [$a] .. [$b]$nl" if $dump;
+
+  my ( @pre_rl, @pre_lr, @mid_lr, @post_lr);
+  foreach my $j ($a .. $b) {
+    if ($j<$aa) {
+      unshift @pre_rl, $words[$j];
+      push @pre_lr, $words[$j];
+
+    } elsif ($j<=$bb) {
+      push @mid_lr, $words[$j];
+
+    } else {
+      push @post_lr, $words[$j];
+    }
+  }
+
+  # my $hitpart = join(" ", @mid_lr);
+  # print "add mid_lr = [$hitpart]\n";
+  
+  my @sub = ( @pre_lr, @mid_lr, @post_lr );
+
+  my $line = join(" ", @sub);
+
+  $count{$line}++;
+
+  if ($count{$line}==1) {
+    push @lines,  $line if  $primlang;
+    push @lines2, $line if !$primlang;
+
+    $parts{$line} = [join(" ",@pre_lr), join(" ",@mid_lr), join(" ",@post_lr)];
+
+    $lexkey1{$line} = join(" ", @post_lr);
+    $lexkey2{$line} = join(" ", @pre_rl);
+    $lexkey3{$line} = join(" ", @pre_lr);
+
+    my $lpre = length join(" ", @pre_lr);
+    my $lmid = length join(" ", @mid_lr);
+    $maxpre = $lpre if $lpre>$maxpre;
+    $maxmid = $lmid if $lmid>$maxmid;
+  }
+
+  return $line;
+}
+
+#------------------------------------------------------------------------------
+
+sub do_count {
+  my ($rfin, $reng, $b) = @_;
+
+  if (!defined $b) {
+    my @list = `./bible-parallel -list`;
+    chomp @list;
+    foreach my $l ( @list ) {
+      do_count($rfin, $reng, $l);
+    }
+    return;
+  }
+
+  if (($rfin||"") eq "ALL") {
+    my @flist = forms("fin");
+    foreach my $f ( @flist ) {
+      do_count($f, $reng, $b);
+    }
+    return;
+  }
+
+  if (($reng||"") eq "ALL") {
+    my @elist = forms("eng");
+    foreach my $e ( @elist ) {
+      do_count($rfin, $e, $b);
+    }
+    return;
+  }
+
+  my $exprfin = expand_pattern($rfin, "fin", $exp);
+  my $expreng = expand_pattern($reng, "eng", $exp);
+  my $v = fin_eng($b, undef, "RULE-fin", $exprfin, "RULE-eng", $expreng);
+
+  print sprintf("%12s %12s %5s %6d$nl",
+		$rfin||"undef", $reng||"undef", $b, $v);
+}
+
+#------------------------------------------------------------------------------
+
+sub fin_eng {
+  my ($b, $v, $rule_fin, $finre, $rule_eng, $engre) = @_;
+  my $sel = "-book=$b";
+  $sel .= " -verse=$v" if defined $v;
+  $sel = "-all"    if $b eq "ALL";
+  $sel = "-all=vt" if $b eq "VT" || $b eq "OT";
+  $sel = "-all=ut" if $b eq "UT" || $b eq "NT";
+
+  print "Running ./bible-parallel -del -dump $sel$nl" if $dump;
+  open BIBPAR, "./bible-parallel -del -dump $sel |";
+  my @fineng;
+  my @a;
+  while (<BIBPAR>) {
+    chomp;
+    next if /^$/;
+    push @a, $_;
+    next unless @a==2;
+    push @fineng, [ @a ];
+    undef @a;
+  }
+  close BIBPAR;
+
+  # die "'./bible-parallel -del -dump $sel' resulted in empty list"
+  #     if @fineng==0;
+
+  # my @finpatlist  = defined $finre ? split(/\s+/, $finre) : ();
+  # my @engpatlist  = defined $engre ? split(/\s+/, $engre) : ();
+
+  my @finpatlist  = defined $finre ? ($finre) : ();
+  my @engpatlist  = defined $engre ? ($engre) : ();
+
+  my $totcount = 0;
+  foreach my $r ( @fineng ) {
+    $totcount += process_pair($r,
+			      $rule_fin, \@finpatlist,
+			      $rule_eng, \@engpatlist);
+  }
+  return $totcount;
+}
+
+#------------------------------------------------------------------------------
+
+sub process_pair {
+  my ($r, $rule_fin, $finpl, $rule_eng, $engpl) = @_;
+
+  my $line;
+  $line = $$r[0] if defined $rule_fin;
+  $line = $$r[1] if defined $rule_eng;
+  $line =~ /\[(.*)\]\s*(.*?)\s*\[(.*)\]/;
+  my ($book, $sent, $txt) = ($1, $2, $3);
+
+  print "process_pair() $rule_fin fin book=[$book] sent=[$sent] ".
+      "txt=[$txt] [$$r[0]]\n" if $debug && defined $rule_fin;
+
+  print "process_pair() $rule_eng eng book=[$book] sent=[$sent] ".
+      "txt=[$txt] [$$r[1]]\n" if $debug && defined $rule_eng;
+
+  my $zid = utf8("$book.$sent");
+
+  my @fin;
+  my @eng;
+
+  @fin = split_n_process_outer("fin", "$book $sent", $rule_fin, $zid, 
+			       $txt, @$finpl) if defined $rule_fin;
+  #return 0 unless @fin;
+
+  $$r[1] =~ /\[(.*)\]\s*(.*?)\s*\[(.*)\]/;
+  ($book, $sent, $txt) = ($1, $2, $3);
+
+  @eng = split_n_process_outer("eng", "$book $sent", $rule_eng, $zid, 
+			       $txt, @$engpl) if defined $rule_eng;
+
+  #print "N-ENG $#eng\n" if $dump;
+  #return 0 unless @eng;
+
+  print "HIT   ",utf8(reorder($$r[0])), $nl, 
+        "HIT   ",utf8(reorder($$r[1])), $nl unless $count || $hist;
+
+  my ( $l1, $l2 ) = ( \@fin, \@eng );
+  ( $l1, $l2 ) = ( $l2, $l1 ) if $prim eq "eng";
+
+  foreach my $a ( @$l1 ) {
+    add(@$a, 1);
+  }
+
+  foreach my $b ( @$l2 ) {
+    add(@$b, 0);
+  }
+
+  my $secn = $prim eq "eng" ? "fin" : "eng";
+
+  if (0 && !$count) {
+    show_result(0, 0, "MATCH $prim: ");
+    show_result(1, 0, "MATCH $secn: ");
+    print $nl;
+  }
+
+  my $ret = scalar @lines;
+
+  delete_all();
+
+  return $ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub reorder {
+  $_ = shift;
+  /(.+)\[(.+)\]\s+(.+)\s+\[(.+)\]/;
+  return "$1$4 ($2 $3)";
+}
+
+#------------------------------------------------------------------------------
+
+sub delete_all {
+  undef %count;
+  undef @lines;
+  undef @lines2;
+  ($maxpre, $maxmid) = (0, 0);
+}
+
+#------------------------------------------------------------------------------
+
+sub read_spec {
+    my $specf = shift;
+    my $verbo = shift;
+    
+    my @ao = `cat $specf`;
+    chomp @ao;
+    my @a;
+
+    push @a, eng_verbs_all() if $specf =~ /\/eng\.spec/;
+    push @a, fin_verbs_all() if $specf =~ /\/fin\.spec/;
+    #
+    # push @a, wn_verb() if $specf =~ /\/eng\.spec/;
+
+    foreach my $llo ( @ao ) {
+	if ($llo =~ /^INCLUDE:\s*([^\s]+)/) {
+	    my $ifile = "../spec/$1";
+	    print "  Including <$ifile>\n" if $verbo;
+	    if ( ! -e $ifile ) {
+		print STDERR "File <$ifile> doesn't exist\n";
+		exit 1;
+	    } else {
+		my @aa = `cat $ifile`;
+		chomp @aa;
+		push @a, @aa;
+	    }
+	    
+	} elsif ($llo =~ 
+	/^INCLUDELIST:\s*([^\s]+)\s+([A-Z][A-Z0-9@-]*)(\s+([A-Z][A-Z0-9-]*))?/) {
+	    my $ifile = "../spec/$1";
+	    my ($rn1, $rn2) = ($2, defined $4 ? $4 : "*undef*"); 
+	    print "  Including list <$ifile> as $rn1 and $rn2\n" if $verbo;
+	    if ( ! -e $ifile ) {
+		print STDERR "File <$ifile> doesn't exist\n";
+		exit 1;
+	    } else {
+		push @a, include_list($1, $2, $4);
+	    }
+	    
+	} else {
+	    push @a, $llo;
+	}
+    }
+    my @b;
+    foreach my $ll ( @a ) {
+	my $l = $ll;
+	$l =~ s/\r$//;
+	# $l =~ s/^\xef\xbb\xbf//;
+	# print "  $l\n";
+	next if $l =~ /^#/;
+	next if $l =~ /^\s*$/;
+	# print "  $l\n";
+	if ($l =~ /^\s+(.+?)\s*$/ && $#b>=0) {
+	    my $v = pop @b;
+	    $l = "$v$1";
+	}
+	push @b, $l;
+    }
+    
+    return @b;
+}
+
+#------------------------------------------------------------------------------
+
+sub verify_regexps {
+    foreach my $lang ( "fin", "eng" ) {
+	my $specf = spec_name($lang, $spec);
+	if ( ! -e $specf ) {
+	    print "File <$specf> doesn't exist\n";
+	    next;
+	}
+	print "Verifying <$specf>\n";
+
+	my @b = read_spec($specf, 1);
+	
+	my %keyval;
+	foreach my $l ( @b ) {
+	    print "SPEC <$l>\n" if $dump;
+	    if ($l !~ /^([A-Z][A-Z0-9-]*):\s*(.*?)\s*$/) {
+		my $ls = utf8($l);
+		print "ERROR: not 'NAME: rule' in <$ls>\n";
+		next;
+	    }
+	    my ($k, $v) = ($1, $2);
+	    if ($v =~ /\|\s/ || $v =~ /\s\|/) {
+		my $vs = utf8($v);
+		print "ERROR: strange spaces and |'s in <$k>: <$vs>\n";
+		next;
+	    }
+	    my $vs = utf8($v);
+	    print "ORIG <$k>: <$vs>\n" if $dump;
+
+	    if (defined $keyval{$k}) {
+		my $vsold = utf8($keyval{$k});
+		print "ERROR: multiply defined <$k>: <$vsold> and <$vs>\n";
+		next;
+	    }
+	    
+	    my $current = $k;
+	    $keyval{$k} = $v;
+	    next if $v eq "";
+	    # print "<$k>: <$vs>\n";
+
+	    my $vexp = $v;
+	    my $iserr;
+	    while ($vexp =~ /^(.*?)([A-Z][A-Z0-9-]*)(.*?)$/) {
+		my ($pre, $key, $post) = ($1, $2, $3);
+		if ($key eq $current) {
+		  my $vsold = utf8($keyval{$k});
+		  print "ERROR: definition of <$k> refers to itself in",
+		  " <$vsold>\n";
+		  $iserr = 1;
+		  last;
+		}
+		if (defined $keyval{$key}) {
+		    my $kkk = $keyval{$key};
+		    if ($pre ne "" && $kkk=~/^\\w(.*)/) {
+			$kkk = $1;
+		    }
+		    $vexp = "$pre$kkk$post";
+		} else {
+		    print "ERROR: <$key> doesn't expand in <$k>: <$vs>\n";
+		    $iserr = 1;
+		    last;
+		}
+	    }
+	    next if $iserr;
+
+	    my $vexps = utf8($vexp);
+	    print "EXPN <$k>: <$vexps>\n" if $dump;
+
+	    if ($vexp !~ /^(\\w)?[a-z \344\366\345\\\[\]\(\)\|\?\+\*\-\^<>]+$/) {
+		print "ERROR: <$vexps> has illegal characters in <$k>: <$vs>\n";
+		my $t = $vexp;
+		$t =~ s/[a-z \344\366\345\\\[\]\(\)\|\?\+\*\-\^<>]//g;
+		my $ts = utf8($t);
+		print "ERROR: illegal characters raw=<$t> utf8=<$ts>\n";
+		next;
+	    }
+	    
+	    eval {
+		my $test  = "keskell\344";
+		my $tests = utf8($test);
+		if ($test =~ /^\w+$vexp$/) {
+		    #print "MATCH \"$tests\" <$k> <$vexps>\n";
+		} else {
+		    #print "MISS  \"$tests\" <$k> <$vexps>\n";
+		}
+		if ("" =~ /^$vexp$/) {
+		    print "ERROR: MATCHES EMPTY STRING <$k> <$vexps>\n";
+		} else {
+		    #print "MISS  \"$tests\" <$k> <$vexps>\n";
+		}
+	    };
+	    if ($@) {
+		chomp $@;
+		$@ =~ s/( at .+? line \d+\.)$//;
+		print "ERROR: in <$k> : ".utf8($@)."\n";
+	    }
+	    if (substr($vexps, 0, 2) ne "\\w") { # eq "^("
+		my $fail = 0;
+		$fail = 1 if substr($vexps, length($vexps)-1) ne ")";
+		my $p = 0;
+		foreach my $i ( 0 .. length($vexps)-1 ) {
+		    my $pwas = $p;
+		    $p++ if substr($vexps, $i, 1) eq "(";
+		    $p-- if substr($vexps, $i, 1) eq ")";
+		    $fail = 1 if $p==0 && $pwas==1 && $i!=length($vexps)-1;
+		}
+		print "MISMATCHED OUTER PARENTHESES <$k> <$vexps>\n" if $fail;
+	    }
+	}
+    }
+
+    print "Verify ending\n";
+
+    return 1;
+}
+
+#------------------------------------------------------------------------------
+
+sub rule_list {
+    my $s = spec_name(shift);
+    my @b = read_spec($s, 0);
+    my @r;
+    
+    foreach my $l ( @b ) {
+	# print "<$l>\n";
+	if ($l !~ /^([A-Z][A-Z0-9-]*):\s*(.*?)\s*$/) {
+	    my $ls = utf8($l);
+	    print STDERR "ERROR: not 'NAME: rule' in <$ls>\n";
+	    exit 1;
+	}
+	push @r, $1 unless $1 eq "END";
+    }
+
+    return @r;
+}
+
+#------------------------------------------------------------------------------
+
+my %p;
+
+sub create_p {
+  # http://www.englishpage.com/irregularverbs/irregularverbs.html
+  # http://www.englishpage.com/irregularverbs/irregularverbs2.html
+  # %p = ( sell=>['sold', 'sold'], tell=>['told', 'told'], 
+  #	 be=>['(was|were)', 'been'] );
+
+  my $f = "../spec/eng-irregular-verbs.csv";
+
+  my @aa = `cat $f`;
+  chomp @aa;
+  foreach my $a ( @aa ) {
+    next if $a =~ /^(#.*|\s*)$/;
+    #die "contains SPACE in [$a]" if $a =~ / /;
+    $a =~ s/\s+/ /g;
+    $a =~ s/^\s+//;
+    $a =~ s/\s+$//;
+    my @b = split(/ /, $a);
+    push @b, "DEF" if $#b==2;
+    die "NOT 4 parts in [$a]" unless $#b==3;
+    my ($k, $r, $e, $i) = @b;
+    die "[$k] already defined" if defined $p{$k};
+    $r = "($r)" if $r =~ /\|/;
+    $e = "($e)" if $e =~ /\|/;
+    $i = "($i)" if $i =~ /\|/;
+    $p{$k} = [ $r, $e, $i ];
+  }
+}
+
+sub REI {
+  my ($v, $d) = @_;
+  create_p() if !%p; 
+  return $p{$v} || [$d, $d, "DEF"];
+}
+
+sub R {
+  my @a = @{REI(@_)};
+  $a[0];
+}
+
+sub S {
+  my $a = R(@_);
+  $a .= "e" unless $a =~ /e$/;
+  $a."st";
+}
+
+sub E {
+  my @a = @{REI(@_)};
+  $a[1];
+}
+
+sub I {
+  my @x = @_;
+  my @a = @{REI(@x)};
+  return $a[2] ne "DEF" ? $a[2] : $x[1];
+}
+
+#------------------------------------------------------------------------------
+
+sub wn_verb {
+  my @ff = ( 
+    "/usr/share/wordnet/index.verb", 
+    "/projappl/project_2002035/wordnet/index.verb" 
+  );
+
+  foreach my $f ( @ff ) {
+    if (-e $f) {
+      my @l;
+      my @ls;
+      my @ledr; # preteriti
+      my @lede; # partisiipin perfekti
+      my @ling;
+      my @l2sg;
+      my @l3sg;
+      my @aa = `cat $f`;
+      foreach my $a ( @aa ) {
+	next unless $a =~ /^([\w_-]+) /;
+	my $r = $1;
+	$r =~ s/_/ /g;
+	push @l, $r;
+
+	my @b = split(/ /, $r);
+	my $v = shift @b;
+
+	# http://www.learnenglishlanguagewell.com/grammar/verbs-with-s-in-present-simple/
+	if ($v =~ /(.*[^aeiouy])y$/) {            # cry
+	  push @ls, join(" ", "$1ies", @b);       # cries
+
+	} elsif ($v =~ /(s|z|ch|sh|x)$/) {        # push
+	  push @ls, join(" ", "${v}es", @b);      # pushes
+
+	} elsif ($v =~ /o$/) {                    # go
+	  push @ls, join(" ", "${v}es", @b);      # goes
+
+	} elsif ($v eq "be") {                    # be
+	  push @ls, join(" ", "(am|are|is)", @b); # am|are|is
+
+	} elsif ($v eq "have") {                  # have
+	  push @ls, join(" ", "(have|has)", @b);  # have|has
+
+	} else {                                  # work
+	  push @ls, join(" ", "${v}s", @b);       # works
+	}
+
+	# https://en.oxforddictionaries.com/spelling/verb-tenses-adding-ed-and-ing
+	# http://www.eslcafe.com/grammar/verb_forms_and_tenses08.html
+	# NOT IMPLEMENTED:
+	#  single vowel plus a consonant, and the stress is at the end
+	#     refer -> referred + referring 
+
+	if ($v eq "be") { # jorma added                       # be
+	  push @ledr, join(" ", R($v,""), @b);      	      # was|were
+	  push @lede, join(" ", E($v,""), @b);      	      # was|were
+	  push @ling, join(" ", "${v}ing", @b);     	      # being
+	  push @l2sg, join(" ", "werest", @b);   	      # wast|werest
+
+	} elsif ($v =~ /(.*[eyo])e$/ || $v eq "singe") {      # free
+	  push @ledr, join(" ", R($v,"${v}d"), @b);           # freed
+	  push @lede, join(" ", E($v,"${v}d"), @b);           # freed
+	  push @ling, join(" ", "${v}ing", @b);     	      # freeing
+	  push @l2sg, join(" ", S($v,"${v}d"), @b);           # freedst
+
+	} elsif ($v =~ /(.*)e$/) {                  	      # bake
+	  push @ledr, join(" ", R($v,"${v}d"), @b);           # baked
+	  push @lede, join(" ", E($v,"${v}d"), @b);           # baked
+	  push @ling, join(" ", "$1ing", @b);       	      # baking
+	  push @l2sg, join(" ", S($v,"${v}d"), @b);           # bakedst
+
+	} elsif ($v =~ /[aeiouy]l$/) {  # (british only)      # travel
+	  push @ledr, join(" ", R($v,"${v}led"), @b);         # travelled
+	  push @lede, join(" ", E($v,"${v}led"), @b);         # travelled
+	  push @ling, join(" ", "${v}ling", @b);    	      # travelling
+	  push @l2sg, join(" ", S($v,"${v}led"), @b);         # travelledst
+
+	} elsif ($v =~ /^[^aeiouy]+[aeiouy]([^aeiouy])$/) {   # stop
+	  push @ledr, join(" ", R($v,"${v}$1ed"), @b);        # stopped
+	  push @lede, join(" ", E($v,"${v}$1ed"), @b);        # stopped
+	  push @ling, join(" ", "${v}$1ing", @b);             # stopping
+	  push @l2sg, join(" ", S($v,"${v}$1ed"), @b);        # stoppedst
+
+	} elsif ($v =~ /[aeiouy][aeiouy][^aeiouy]$/) { #(def) # treat
+	  push @ledr, join(" ", R($v,"${v}ed"), @b);          # treated
+	  push @lede, join(" ", E($v,"${v}ed"), @b);          # treated
+	  push @ling, join(" ", "${v}ing", @b);               # treating
+	  push @l2sg, join(" ", S($v,"${v}ed"), @b);          # treatedst
+
+	} elsif ($v =~ /c$/) {                                # panic
+	  push @ledr, join(" ", R($v,"${v}ked"), @b);         # panicked
+	  push @lede, join(" ", E($v,"${v}ked"), @b);         # panicked
+	  push @ling, join(" ", "${v}king", @b);              # panicking
+	  push @l2sg, join(" ", S($v,"${v}ked"), @b);         # panickedst
+
+	} elsif ($v =~ /(.*[^aeiouy])y$/) {                   # cry
+	  push @ledr, join(" ", R($v,"$1ied"), @b);           # cried
+	  push @lede, join(" ", E($v,"$1ied"), @b);           # cried
+	  push @ling, join(" ", "${v}ing", @b);               # crying
+	  push @l2sg, join(" ", S($v,"$1ied"), @b);           # criedst
+
+	} else {                                              # act
+	  push @ledr, join(" ", R($v,"${v}ed"), @b);          # acted
+	  push @lede, join(" ", E($v,"${v}ed"), @b);          # acted
+	  push @ling, join(" ", I($v,"${v}ing"), @b);         # acting
+	  push @l2sg, join(" ", S($v,"${v}ed"), @b);          # actedst
+	}
+
+	if ($v =~ /e$/) {
+	  push @l2sg, join(" ", "${v}st",  @b) if $v ne "be";
+	} elsif ($v =~ /(.*)y$/) {
+	  push @l2sg, join(" ", "$1iest",  @b);
+	} else {
+	  push @l2sg, join(" ", "${v}est",  @b);
+	}
+
+	if ($v =~ /e$/) {
+	  push @l3sg, join(" ", "${v}th",  @b) if $v ne "be";
+	} else {
+	  push @l3sg, join(" ", "${v}eth", @b);
+	}
+      }
+
+      if ($dump && 1) {
+	print join("\nWN-VERBS ",           "", @l   )."\n";
+	print join("\nWN-VERBS-PRES-3SG ",  "", @ls  )."\n";
+	print join("\nWN-VERBS-PAST ",      "", @ledr)."\n";
+	print join("\nWN-VERBS-PCPL-PRES ", "", @ling)."\n";
+	print join("\nWN-VERBS-PCPL-PAST ", "", @lede)."\n";
+	print join("\nWN-VERBS-2SG ",       "", @l2sg)."\n";
+	print join("\nWN-VERBS-3SG ",       "", @l3sg)."\n";
+      }
+
+      return ("VERBS: (".          join("|", @l   ).")",
+	      "VERBS-PRES-3SG: (". join("|", @ls  ).")",
+	      "VERBS-PAST: (".     join("|", @ledr).")",
+	      "VERBS-PCPL-PRES: (".join("|", @ling).")",
+	      "VERBS-PCPL-PAST: (".join("|", @lede).")",
+	      "VERBS-2SG:       (".join("|", @l2sg).")",
+	      "VERBS-3SG:       (".join("|", @l3sg).")");
+    }
+  }
+  return "";
+}
+
+#------------------------------------------------------------------------------
+
+sub include_list {
+  my ($fn, $r1, $r2) = @_;
+  my $f = "../spec/$fn";
+  my @aa = `cat $f`;
+  chomp @aa;
+  
+  my %rr;
+  my $r = "";
+  foreach my $a ( @aa ) {
+    $a =~ s/^\s+//;
+    $a =~ s/\s+$//;
+    $a =~ s/\s\s+$/ /g;
+    next if $a =~ /^#/;
+    next if $a eq "";
+    if ($a =~ /^@\s*(.*?)$/) {
+      $r = $1;
+      if (defined $r2) {
+	$a = $r;
+	$rr{$r2} = () unless defined $rr{$r2};
+	push @{$rr{$r2}}, $a;
+	print $r2." [".utf8($a)."]\n" if $dump;
+      }
+    } else {
+      my $rx = $r1;
+      if ($rx =~ /^([^@]*)@([^@]*)$/) {
+	die "Infinitive missing for <$f> <$a> <$rx>\n" unless defined $r;
+	my ($q, $w) = ($1, $2);
+	my $x = $r;
+	$x =~ s/\xe4/a/g;
+	$x =~ s/\xf6/o/g;
+	$x = uc($x);
+	$rx = "$q$x$w";
+      }
+      print "$r1 $rx"." [".utf8($a)."]\n" if $dump;
+      $rr{$rx} = () unless defined $rr{$rx};
+      push @{$rr{$rx}}, $a;
+      $inf{$a} = $r if $r ne "";
+      print "INF ".utf8($a)." => ".utf8($r)."\n" if $dump;
+    }
+  }
+
+  my @ret;
+  foreach my $k ( sort keys %rr ) {
+    push @ret, "$k: (".join("|", @{$rr{$k}}).")";
+  }
+
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub common_verb_lists {
+  my $lang = shift;
+  my $stxt = $sample ? "-sample" : "";
+  my $f = "$lang-verbs$stxt.txt";
+
+  return include_list($f, "VERB-LIST", "VERB-LIST-NON-FINITE");
+}
+
+#------------------------------------------------------------------------------
+
+sub fin_verb_lists {
+  return common_verb_lists("fin", @_);
+}
+
+#------------------------------------------------------------------------------
+
+sub eng_verb_lists {
+  return common_verb_lists("eng", @_);
+}
+
+#------------------------------------------------------------------------------
+
+sub fin_verbs_all {
+  return ();
+  # return fin_verb_lists(@_);
+}
+
+#------------------------------------------------------------------------------
+
+sub eng_verbs_all {
+  return ( wn_verb() );
+  # return ( eng_verb_lists(@_), wn_verb() );
+}
+
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+
+sub submit {
+  my $n = shift;
+  my $sbatch = "sbatch";
+  #$sbatch = "cat";
+  my $partition = "small";
+  my $time      = "0-4:00";
+  my $mem       = "2048";
+  open F, ">$n.sbatch";
+  print F "#! /bin/sh\n";
+  print F "\n";
+  print F "#SBATCH -p $partition\n";
+  print F "#SBATCH -t $time\n";
+  print F "#SBATCH --mem $mem\n";
+  print F "#SBATCH -o $n.out\n";
+  print F "#SBATCH -e $n.err\n";
+  print F "#SBATCH --account project_2002035\n";
+  print F "\n";
+
+  foreach my $a ( @_ ) {
+    my @a = @{$a};
+    my $cmd = "./kwic $a[0]";
+    $cmd .= " 1>$a[1].out 2>$a[1].err" if $a[1] ne "";
+    print F "$cmd\n";
+  }
+
+  print F "\n";
+  close F;
+  if ($dryrun) {
+    print("Would submit $n.sbatch\n");
+  } else {
+    my @l = `$sbatch $n.sbatch`;
+    if ($#l==0 && $l[0]=~/Submitted batch job (\d+)/) {
+      return $1;
+    } else {
+      return "sbatch failed";
+    }
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub expand_verbs {
+  my $vvv = shift;
+  my @v;
+  if ($vvv =~ /\.txt$/) {
+    my @zz = include_list($vvv, "@", undef);
+    foreach my $z ( @zz ) {
+      die "expand_verbs() failed with <$z>\n" unless $z =~ /^(\w+): /;
+      my $k = $1;
+      # print("<$k> <$z>\n");
+      push @v, lc($k);
+    }
+  } else {
+    @v = split(/,/, $vvv);
+  }
+  return @v;
+}
+
+#------------------------------------------------------------------------------
+
+sub jobs {
+  my ($s, $l, $vvv, $d, $b) = @_;
+  my %h;
+  my @jobs;
+  my @v = expand_verbs($vvv);
+  push @v, "" if $#v==-1;
+  
+  print "jobs() [$s] [$l] [$vvv](".int(@v).") [$d] [$b]\n" if $debug;
+  
+  foreach my $v ( @v ) {
+    my @jj = jobs_inner($s, $l, $v, $d, $b);
+    foreach my $j ( @jj ) {
+      my $k = $$j[0];
+      #print("<$k>\n");
+      push @jobs, $j if !defined $h{$k};
+      $h{$k} = 1;
+    }
+  }
+  return @jobs;
+}
+
+#------------------------------------------------------------------------------
+
+sub e_r {
+  my $a = shift;
+  my @b = @_;
+  my $x = pop @b;
+  my @r;
+  for my $i (@b) {
+    push @r, "$a-$i$x";
+  }
+  return @r;
+}
+
+#------------------------------------------------------------------------------
+
+sub jobs_inner {
+  my ($s, $l, $v, $d, $b) = @_;
+
+  my @a;
+  push @a, ["version", "-version"];
+  return @a if $s eq "version";
+
+  push @a, ["verify", "-verify"];
+  return @a if $s eq "verify";
+
+  my %ss;
+  for my $si ( split(/,/, $s) ) {
+    # print("$si\n");
+    $ss{$si} = 1;
+  }
+
+  my $ei = "IN-EXCL";
+  my $eo = "ON-EXCL";
+  my $et = "OUT-EXCL";
+  
+  my @loc;
+  if (defined $ss{"main"} || $s eq "all") {
+    # with all and both langs -TEMP-WORDS
+    for my $i ("", "DE-", "AD-") {     # see below
+      for my $j ("IN", "ON", "OUT") {
+	# push @loc, "$i$j/TEMP-WORDS";
+	# push @loc, "$i$j/$j-EXCL";
+	push @loc, "$i$j/TW-$i$j-EXCL";
+      }
+    }
+  }
+
+  # eng: AD-ON-PRP-C : -AD-ON
+  
+  my @loe;
+  my @lof;
+  if (defined $ss{"detail"} || $s eq "all") {
+    push @loe, e_r("IN",     "PRP-A", "PRP-B", "/TW-IN-EXCL"    );
+    push @loe, e_r("DE-IN",  "PRP-A", "PRP-B", "/TW-DE-IN-EXCL" );
+    push @loe, e_r("AD-IN",  "PRP-A", "PRP-B", "/TW-AD-IN-EXCL" );
+
+    push @loe, e_r("ON",     "PRP-C", "PRP-D", "/TW-ON-EXCL"    );
+    push @loe, e_r("DE-ON",  "PRP-C", "PRP-D", "/TW-DE-ON-EXCL" );
+    push @loe, e_r("AD-ON",  "PRP-C", "PRP-D", "/TW-AD-ON-EXCL" );
+
+    push @loe, e_r("OUT",    "PRP-E", "PRP-F", "/TW-OUT-EXCL"   );
+    push @loe, e_r("DE-OUT", "PRP-E", "PRP-F", "/TW-DE-OUT-EXCL");
+    push @loe, e_r("AD-OUT", "PRP-E", "PRP-F", "/TW-AD-OUT-EXCL");
+    
+    # 
+    push @lof, e_r("IN",     "C", "POP-A", "POP-B", "/TW-IN-EXCL"    );
+    push @lof, e_r("DE-IN",  "C", "POP-A", "POP-B", "/TW-DE-IN-EXCL" );
+    push @lof, e_r("AD-IN",  "C", "POP-A", "POP-B", "/TW-AD-IN-EXCL" );
+
+    push @lof, e_r("ON",     "C", "POP-C", "POP-D", "/TW-ON-EXCL"    );
+    push @lof, e_r("DE-ON",  "C", "POP-C", "POP-D", "/TW-DE-ON-EXCL" );
+    push @lof, e_r("AD-ON",  "C", "POP-C", "POP-D", "/TW-AD-ON-EXCL" );
+
+    push @lof, e_r("OUT",         "POP-E", "POP-F", "/TW-OUT-EXCL"   );
+    push @lof, e_r("DE-OUT",      "POP-E", "POP-F", "/TW-DE-OUT-EXCL");
+    push @lof, e_r("AD-OUT",      "POP-E", "POP-F", "/TW-AD-OUT-EXCL");
+  }
+
+  my @lot;
+  if (defined $ss{"tct"} || $s eq "all") {
+    # -run=trans
+    #push @lot, "TRNS-ADP";
+    push @lot, e_r("TRNS-INT", "C", "PRP", "POP", "/TW-TRNS-EXCL");
+    push @lot, e_r("TRNS-EXT", "C", "PRP", "POP", "/TW-TRNS-EXCL");
+    
+    # -run=circ
+    push @lot, e_r("CIRC",          "PRP", "POP", "/TEMP-WORDS");
+
+    # -run=time
+    push @lot, e_r("TIME",     "C", "PRP", "POP", "");
+  }
+
+  my @books;
+  if (defined $b) {
+    if ($b eq "5+5") {
+      @books = ( "01", "02", "03", "04", "05", "40", "41", "42", "43", "44" );
+
+    } elsif ($b eq "ot") {
+      for my $i ( 1 .. 39 ) {
+	push @books, sprintf("%02d", $i);
+      }
+    } elsif ($b eq "nt") {
+      for my $i ( 40 .. 66 ) {
+	push @books, "$i";
+      }
+    } else {
+      @books = split(/,/, $b);
+    }
+  } else {
+    for my $i ( 1 .. 66 ) {
+      push @books, sprintf("%02d", $i);
+    }
+  }
+
+  my @ll = ();
+  if ($l ne "") {
+    @ll = split(/,/, $l);
+  } else {
+    @ll = ("fin", "eng");
+  }
+
+  my $switches = "";
+  my $z = "";
+  my $x = "";
+  if ($v ne "") {
+    #my $vr = "'^$v\$'";
+    my $vr = "VERB-TEST-".uc($v);
+    $switches = "-dist=$d ";
+    $z = "$v-$d++";
+    $x = "$vr++";
+  }
+
+  $switches .= "-hist=dec";
+
+  my $xsw = "";
+  if ($inf) {
+    $switches .= " -inf";
+    $xsw .= "-inf";
+  }
+
+  for my $k ( @ll ) {
+    my @lox = $k eq "eng" ? @loe : @lof;
+    for my $b ( @books ) {
+      for my $rr (@loc, @lox, @lot) {
+	my $r = $rr;
+	$r =~ s/\/TEMP-WORDS// if $k eq "fin";
+	my $t = $r;
+	$t =~ s/\//§/g;
+	push @a, ["$k-$b-$z$t$xsw", "-r$k=$x$r -book=$b $switches 0+0"];
+      }
+    }
+  }
+
+  return @a;
+} 
+
+#------------------------------------------------------------------------------
+
+sub running_pending() {
+  my @s = `sacct`;
+  my @r = grep(/RUNNING/, @s);
+  my @p = grep(/PENDING/, @s);
+  return (int(POSIX::ceil(int(@r)/3)), int(@p));
+}
+  
+#------------------------------------------------------------------------------
+
+sub run {
+  #return run_separate(@_);
+  return run_joined(@_);
+}
+
+#------------------------------------------------------------------------------
+
+sub run_separate {
+  my $spec = shift;
+  $spec = "all" if $spec eq "1";
+  my @l = jobs($spec, $lang, $verb, $dist, $book);
+  system("mkdir -p $dir") unless (-d $dir);
+
+  my $tot = int(@l);
+  my $left = $tot;
+
+  my @date = `date +%Y-%m-%d-%H%M%S`;
+  chomp @date;
+  my $logfile = "$dir/run-$date[0].log";
+  open LOG, ">$logfile";
+  @date = `date`;
+  my $dd = $date[0];
+  chomp $dd;
+  print LOG "$dd $tot runs to be handled\n";
+
+  my $max_queue = 400;
+
+  print("Starting to check/submit $tot runs with $max_queue job limit\n");
+  my ($ne, $ns) = (0, 0);
+  for my $i ( @l ) {
+    my @a = @{$i};
+    my $fname = "$dir/kwic-$a[0]";
+    if (-s "$fname.err") {
+      unlink "$fname.out";
+      print     "$fname.err was non-empty so $fname.out was removed\n";
+    }
+    if (-s "$fname.out") {
+      print     "$fname.out already exists\n";
+      print LOG "$fname.out $a[1] EXIST\n";
+      $ne++;
+    } else {
+      #print     "$fname.out does NOT exist\n";
+      while (1) {
+	my ($nrun, $npen) = (0, 0);
+	($nrun, $npen) = running_pending() unless $dryrun;
+	print "$left/$tot jobs left $npen pending and $nrun running ";
+	last if $nrun+$npen<=$max_queue;
+	print "... sleeping\n";
+	sleep(1) unless $dryrun;
+      }
+      print     "submitting run for $a[1]\n";
+      my $j = submit($fname, ([$a[1], '']));
+      print LOG "$fname.out $a[1] JOB $j\n";
+      $ns++;
+    }
+    $left--;
+  }
+
+  my $dtxt = "";
+  $dtxt = " would have been" if $dryrun;
+  print     "Total ", $ne+$ns, " jobs, $ne existed, $ns$dtxt submitted\n";
+  print LOG "Total ", $ne+$ns, " jobs, $ne existed, $ns$dtxt submitted\n";
+  print     "Log stored in $logfile\n";
+
+  @date = `date`;
+  print LOG $date[0];
+
+  if ($nowait) {
+    return;
+  }
+
+  @date = `date`;
+  chomp @date;
+  print     $date[0], " sleeping first for 5 seconds...\n";
+  sleep(5);
+
+  while (1) {
+    my ($nrun, $npen) = running_pending();
+    last if $nrun+$npen==0;
+    
+    @date = `date`;
+    chomp @date;
+    print $date[0], " $npen pending and $nrun running\n";
+    sleep(1);
+  }
+
+  @date = `date`;
+  chomp @date;
+  print     $date[0], " all runs finished\n";
+  print LOG $date[0], " all runs finished\n";
+} 
+
+#------------------------------------------------------------------------------
+
+sub run_joined {
+  my $max_queue    = 50;
+  my $runs_per_job = 50;
+
+  my $spec = shift;
+  $spec = "all" if $spec eq "1";
+  my @l = jobs($spec, $lang, $verb, $dist, $book);
+
+  # pop @l while @l>5;
+  
+  system("mkdir -p $dir") unless (-d $dir);
+
+  my $tot = int(@l);
+  my @date = `date +%Y-%m-%d-%H%M%S`;
+  chomp @date;
+  my $datetxt = $date[0];
+  my $logfile = "$dir/run-$datetxt.log";
+  open LOG, ">$logfile";
+  @date = `date`;
+  my $dd = $date[0];
+  chomp $dd;
+  print LOG "$dd $tot runs to be handled\n";
+
+  print("Starting to check $tot runs\n");
+
+  my ($ne, $nx, $ns, $nj) = (0, 0, 0, 0);
+  my @rlist;
+  for my $i ( @l ) {
+    my @a = @{$i};
+    my $rfname = "$dir/kwic-$a[0]";
+    if (-s "$rfname.err") {
+      unlink "$rfname.out";
+      print     "$rfname.err was non-empty so $rfname.out was removed\n";
+    }
+    if (-s "$rfname.out") {
+      print     "$rfname.out already exists\n";
+      print LOG "$rfname.out $a[1] EXIST\n";
+      $ne++;
+    } else {
+      print     "$rfname.out does NOT exist\n";
+      print LOG "$rfname.out $a[1] does NOT exist\n";
+      push @rlist, [$a[1], $rfname];
+      $nx++;
+    }
+  }
+  print("Of total $tot runs $ne results existed and $nx will be submitted\n");
+
+  my $nruns = int(@rlist);
+  my $njobs = int(POSIX::ceil($nruns/$runs_per_job));
+  my $left  = $njobs;
+  print("Submitting $nruns runs in $njobs jobs of $runs_per_job".
+	" runs in each with $max_queue job limit\n");
+
+  my $rr = 0;
+  my $jj = 1;
+  while ($left) {
+    while (1) {
+      my ($nrun, $npen) = (0, 0);
+      ($nrun, $npen) = running_pending() unless $dryrun;
+      print "$left/$njobs jobs left $npen pending and $nrun running ";
+      last if ($dryrun || $nrun+$npen<=$max_queue);
+      print "... sleeping\n";
+      sleep(1);
+    }
+
+    my @alist;
+    while (@alist<$runs_per_job && $rr<$nruns) {
+      push @alist, $rlist[$rr++];
+    }
+
+    my $asize = int(@alist);
+    my $jfname = "$dir/sbatch-$datetxt-".sprintf("%05d", $jj++);
+    print     "submitting job $jfname with $asize runs\n";
+    my $j = submit($jfname, @alist);
+    sleep(1);
+    print LOG "$jfname.out with $asize runs JOB $j\n";
+    $ns += $asize;
+    $nj++;
+    $left--;
+  }
+
+  my $dtxt = "";
+  $dtxt = " would have been" if $dryrun;
+  print     "Total ", $ne+$ns, " runs, $ne existed, $ns$dtxt submitted in $nj jobs\n";
+  print LOG "Total ", $ne+$ns, " runs, $ne existed, $ns$dtxt submitted in $nj jobs\n";
+  print     "Log stored in $logfile\n";
+
+  @date = `date`;
+  chomp @date;
+  print LOG $date[0], " starting to monitor runs if any\n";
+
+  if ($nowait || $nj==0) {
+    return;
+  }
+
+  @date = `date`;
+  chomp @date;
+  print     $date[0], " sleeping first for 5 seconds...\n";
+  sleep(5);
+
+  while (1) {
+    my ($nrun, $npen) = running_pending();
+    last if $nrun+$npen==0;
+    
+    @date = `date`;
+    chomp @date;
+    print $date[0], " $npen pending and $nrun running\n";
+    sleep(1);
+  }
+
+  @date = `date`;
+  chomp @date;
+  print     $date[0], " all runs finished\n";
+  print LOG $date[0], " all runs finished\n";
+} 
+
+#------------------------------------------------------------------------------
+
+sub per_book {
+  my @bookn = (
+    "gn","ex","lv","nu","dt","js","jg","ru","1s","2s",
+    "1k","2k","1x","2x","er","ne","es","jb","ps","pr",
+    "ec","ca","is","jr","lm","ek","da","ho","jl","am",
+    "ob","on","mi","na","ha","zp","hg","zc","ma","mt",
+    "mk","lk","jn","ac","rm","1c","2c","ga","ep","pp",
+    "cl","1q","2q","1t","2t","ti","fm","hb","jm","1p",
+    "2p","1j","2j","3j","jd","rv","OT","NT"
+      );
+
+  my ($vr, $lng, $nc) = @_;
+  my %v = %$vr;
+  my @aa = ();
+  my $dim = 0;
+
+  my @lngs = ();
+  if ($lng eq "") {
+    die "-dat per_book() requires -lang=eng|fin to be given\n";
+    # @lngs = ("eng", "fin");
+  } else {
+    push @lngs, $lng;
+  }
+
+  foreach my $lll ( @lngs ) {
+    my $llls = substr($lll, 0, 1);
+    
+    for (my $i=1; $i<=68; $i++) {
+      my $z = sprintf "$lll-%02d", $i;
+      $z = "$lll-OT" if $i==67;
+      $z = "$lll-NT" if $i==68;
+      my $x = "$z-";
+      #print "LANG $lll $z $x\n" if $dump;
+      #print "KEYS ".join(" ", keys %v)."\n" if $dump;
+      my @ll = sort grep /$x/, keys %v;
+      print "MATCHES ".join(" ", @ll)."\n" if $dump;
+
+      $dim = int(@ll) unless $dim;
+      next unless int(@ll);
+      die "dimensionality mismatch: ".int(@ll). " vs $dim\n" unless int(@ll)==$dim;
+      
+      if (!@aa) {
+	my @llx = ();
+	foreach my $j ( @ll ) {
+	  if ($j =~ /$x(.*)/) {
+	    push @llx, $1;
+	  } else {
+	    push @llx, $j;
+	  }
+	}
+	print join(" ", @llx), "\n" if $dump;
+	push @aa, \@llx;
+      }
+
+      my @a = ();
+      foreach my $l ( @ll ) {
+	my @v = @{$v{$l}};
+	print join(" ", @v), "\n" if $dump;
+	my $div = $nc ? $v[$nc] : 1;
+	$div = 1 if !$div;
+	push @a, $v[0]/$div;
+      }
+      my $label = "$llls-".$bookn[$i-1];
+      print "Stored ".int(@a)." dimensional vector $label\n" if $dump;
+      push @a, $label;
+      push @aa, [ @a ];
+    }
+  }
+  
+  return @aa;
+}
+
+#------------------------------------------------------------------------------
+
+sub per_verb {
+  my ($vr, $lng, $nc, $l1, $vx, $ext) = @_;
+  my %v = %$vr;
+  my @aa = ();
+  my $dim = 0;
+  my $dim_reason = "";
+  my @vl = expand_verbs($vx);
+
+  die "-dat=per-verb requires -verb=list|file.txt\n" unless @vl;
+  
+  my @lngs = ();
+  if ($lng eq "") {
+    die "-dat per_verb() requires -lang=eng|fin to be given\n";
+    # @lngs = ("eng", "fin");
+  } else {
+    push @lngs, $lng;
+  }
+
+  my %z = (
+    "main"  =>"AD-IN|AD-ON|AD-OUT|DE-IN|DE-ON|DE-OUT|IN|ON|OUT",
+    "main3" =>"AD-IN|AD-ON|AD-OUT|DE-IN|DE-ON|DE-OUT",
+    "detail"=>"IN-C|IN-P.P-A|IN-P.P-B|".
+              "DE-IN-C|DE-IN-P.P-A|DE-IN-P.P-B|".
+              "AD-IN-C|AD-IN-P.P-A|AD-IN-P.P-B|".
+              "ON-C|ON-P.P-C|ON-P.P-D|".
+              "DE-ON-C|DE-ON-P.P-C|DE-ON-P.P-D|".
+              "AD-ON-C|AD-ON-P.P-C|AD-ON-P.P-D|".
+              "OUT-P.P-E|OUT-P.P-F".
+              "DE-OUT-P.P-E|DE-OUT-P.P-F|".
+              "AD-OUT-P.P-E|AD-OUT-P.P-F|"
+      );
+  # main: 9-dim    main3: 6-dim   detail: 24-dim 
+  my $z = $z{$ext};
+  
+  foreach my $lll ( @lngs ) {
+    my $llls = substr($lll, 0, 1);
+    
+    foreach my $vb ( @vl ) {
+      my $x = "$lll-..-$vb-\\d+\\+\\+($z)\\/";
+      print "LANG $lll /$x/\n" if $dump;
+      print "KEYS ".join(" ", keys %v)."\n" if $dump;
+      my @ll = sort grep /$x/, keys %v;
+      print "MATCHES ".join(" ", @ll)."\n" if $dump;
+
+      if ($dim==0) {
+	$dim = int(@ll);
+	print "DIM dimensionality set to $dim due to <$lll> <$vb>\n" if $dump;
+	$dim_reason = "$lll $vb";
+      }
+      next unless int(@ll);
+      print "DIM dimensionality is     ".int(@ll)." due to <$lll> <$vb>\n" if $dump;
+      die "dimensionality mismatch: <$lll $vb> ".int(@ll). " vs <$dim_reason> $dim\n" 
+	  unless int(@ll)==$dim;
+      
+      if (!@aa) {
+      	my @llx = ();
+      	foreach my $j ( @ll ) {
+      	  if ($j =~ /(...-..)-$vb-(.*)/) {
+      	    push @llx, "$1-\@-$2";
+      	  } else {
+      	    push @llx, $j;
+      	  }
+      	}
+      	print "XXXX ", join(" ", @llx), "\n" if $dump;
+      	push @aa, \@llx;
+      }
+
+      my @a = ();
+      my $vsum = 0;
+      foreach my $l ( @ll ) {
+      	my @v = @{$v{$l}};
+      	my $div = $nc ? $v[$nc] : 1;
+      	$div = 1 if !$div;
+      	my $vdiv = $v[0]/$div;
+      	print join(" ", @v), " $vdiv\n" if $dump;
+      	push @a, $vdiv;
+	$vsum += $vdiv;
+      }
+      if ($l1) {
+	foreach my $i ( 0 .. $#a ) {
+	  my $nv = $a[$i];
+	  $nv /= $vsum if $vsum>0;
+	  print "L1 $a[$i] -> $nv\n" if $dump;
+	  $a[$i] = $nv;
+	}
+      }
+      my $label = $vb;
+      print "Stored ".int(@a)." dimensional ".($l1?"L1-normalized ":"").
+	  "vector <$label>\n" if $dump;
+      push @a, $label;
+      push @aa, [ @a ];
+    }
+  }
+  
+  return @aa;
+}
+
+#------------------------------------------------------------------------------
+
+sub sum_vector {
+  my @v = @{shift @_};
+  my @l = @{shift @_};
+
+  my %r;
+  my @x;
+  my @a;
+
+  foreach my $i ( 0 .. $#v ) {
+    my $z = $l[$i];
+    if ($z =~ /\+\+(.*)\//) {
+      $z = $1;
+      if (!defined $r{$z}) {
+	$r{$z} = int(@x);
+	push @x, $z;
+	push @a, 0;
+      }
+      $a[$r{$z}] += $v[$i];
+    }
+    # print "$l[$i] $z $v[$i]\n";
+  }
+  
+  # foreach my $i ( 0 .. $#x ) {
+  #   print "$x[$i] $a[$i]\n";
+  # }
+
+  return ( [ @a ], [ @x ] );
+}
+
+#------------------------------------------------------------------------------
+
+sub dat {
+  my $type = shift;
+  my %v;
+  
+  opendir(my $dh, $dir) || die "Can't opendir $dir: $!";
+  my $ok = 0;
+  my $fail = 0;
+  my $skip = 0;
+  while (readdir $dh) {
+    next unless /^kwic-((eng|fin).+)\.out$/;
+    my $s = $1;
+    if ($s =~ /-(\d+)\+\+/) {
+      if ($1!=$dist) {
+	$skip++;
+	next;
+      }
+    }
+
+    $s =~ s/§/\//;
+    open(my $fh, "$dir/$_") || die "Can't open $dir/$_: $!";
+
+    print "\nReading file $dir/$_\n\n" if $dump;
+    
+    my $nsente = 0;
+    my $nword  = 0;
+    my $n      = 0;
+    while (my $l=<$fh>) {
+      chomp $l;
+      print "$l\n" if $dump;
+      ($nsente, $nword) = ($1, $2) 
+	  if $l =~ /norm=none : nsente=(\d+) nword=(\d+)/;
+      $n = $1 if $l =~ /TOTAL .* : (\d+)$/;
+    }
+    close($fh);
+    #print "$s $n $nword $nsente\n";
+    $v{$s} = [$n, $nword, $nsente];
+    print "Warning: failed to read result in $dir/$_\n" unless $nword;
+    $ok++ if $nword;
+    $fail++ unless $nword;
+  }
+  closedir $dh;  
+
+  print "Files read: $skip skipped, $ok successfully and $fail failed\n";
+
+  my $langx = "";
+  $langx = "-$lang" if $lang ne "";
+
+  my $threshx = "-".$thresh;
+  $threshx =~ s/\./_/g;
+  
+  my $datf = "$dir/$type-$dist-$norm$threshx$langx.dat";
+  my $txtf = "$dir/$type-$dist-$norm$threshx$langx.txt";
+
+  my $normx = $norm;
+  $normx = $1 if $normx =~ /^(.*)\+l1$/;
+  my $nc = 1;
+  $nc = 2 if $normx eq "nsente";
+  $nc = 0 if $normx eq "none";
+  my $l1 = $norm =~ /l1/ ? 1 : 0;
+  # print "$norm $normx $l1\n";
+  
+  my @aa;
+  if ($type eq "per-book") {
+    @aa = per_book(\%v, $lang, $nc);
+  }
+  if ($type =~ /^per-verb/) {
+    my $ext = substr($type, 9);
+    @aa = per_verb(\%v, $lang, $nc, $l1, $verb, $ext);
+  }
+  
+  if (@aa) {
+    my @ll = @{shift @aa};
+    #print join(" ", @{$ll[0]}), "\n";
+    open(my $df, ">$datf") || die "Can't open $datf: $!";
+    print $df int(@ll), "\n";
+    my @max;
+    foreach my $a ( @aa ) {
+      my @ax = @{$a};
+      pop @ax;
+      my @slvec = sum_vector(\@ax, \@ll);
+      my @svec = @{$slvec[0]};
+      my @lvec = @{$slvec[1]};
+      # print join(" ", @svec)."\n";
+      if ($#max<0) {
+	@max = @svec;
+      } else {
+	foreach my $i ( 0 .. $#svec ) {
+	  $max[$i] = $svec[$i] if $svec[$i]>$max[$i];
+	}
+      }
+      #print "MAX ".join(" ", @max)."\n";
+    }
+    my @zzzshow;
+    foreach my $a ( @aa ) {
+      my @ax = @{$a};
+      my $lab1 = pop @ax;
+      my $lab2 = ao2latin1($lab1);
+      # print "Converted $lab1 to ".utf8($lab2)."\n" if $lab1 ne $lab2;
+
+      my @slvec = sum_vector(\@ax, \@ll);
+      my @svec = @{$slvec[0]};
+      my @lvec = @{$slvec[1]};
+      my $zzz = "";
+      my $zzzd = "";
+      foreach my $i ( 0 .. $#svec ) {
+	# print "$svec[$i] $max[$i]\n";
+	if ($svec[$i]>=$thresh*$max[$i]) {
+	  $zzz .= "+" unless $zzz eq "";
+	  $zzz .= $lvec[$i];
+	}
+	my $sx = sprintf("%.3g", $svec[$i]);
+	$zzzd .= ($zzzd eq ""?"":" ")."$lvec[$i]=$sx";
+      }
+      $zzz = "***" if $zzz eq "";
+      push @zzzshow, utf8($lab2)." $zzz ($zzzd)";
+      #print utf8($lab2)." $zzz\n";
+      
+      $lab2 .= "|$zzz";
+      push @ax, $lab2;
+      print $df join(" ", @ax)."\n";
+    }
+    close($df);
+    print join("\n", sort(@zzzshow))."\n";
+
+    open($df, ">$txtf") || die "Can't open $txtf: $!";
+    print $df "feature file <$datf>\ntype <$type> dist <$dist> "
+	."norm <$norm> thresh <$thresh> lang <$lang>\n";
+    print $df int(@aa), " vectors\n";
+    print $df $#{$aa[0]}." dimensions\n";
+    for (my $l=0; $l<=$#ll; $l++) {
+      print $df $l+1, " $ll[$l] \n";
+    }
+    close($df);
+
+    print "Stored ", int(@aa), " x ", int(@ll), " dimensional vectors ";
+    print "with $norm normalization in $datf\n";
+    print "Stored data description in $txtf\n";
+
+  } else {
+    print "No data was stored in $datf\n";
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub som {
+  my $yrat    = 3/4;
+  my $topol   = "hexa";
+  my $iter    = 1000000;
+  my $alpha   = 0.1;
+  my $radmul  = 0.5;
+  my $samiter = 100000;
+
+  #$iter    = 10000;
+  #$samiter = 10000;
+
+  print "\n";
+  print "Creating SOM from $som\n";
+
+  open(my $df, $som) || die "Can't open $som: $!";
+  my @dat = <$df>;
+  close($df);
+  chomp @dat;
+  my $dim  = shift @dat;
+  my $nvec = @dat;
+  print "  $nvec vectors of dimensionality $dim\n";
+
+  my $nut  = $somexp*$nvec;
+  print "  with expansion $somexp aiming at $nut map units ".
+      "with $yrat height/width ratio\n";
+  
+  my $ydim = int(POSIX::ceil(sqrt($nut*$yrat)));
+  my $xdim = int(POSIX::ceil($nut/$ydim));
+  my $nua  = $xdim*$ydim;
+
+  print "  selected $xdim x $ydim size of $nua map units\n\n";
+
+  my $cod0 = $som;
+  $cod0 =~ s/\.dat$/-$somexp-$topol-${xdim}x$ydim-0.cod/;
+  print "Random initialization with $topol topology in $cod0\n";
+  my $cmd = "./randinit -din $som -cout $cod0 -topol $topol -neigh bubble";
+  $cmd .= " -xdim $xdim -ydim $ydim";
+  print "  $cmd\n";
+  my $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $cod1 = $cod0;
+  $cod1 =~ s/-0\.cod$/-1.cod/;
+  my $radius = int(POSIX::ceil($ydim*$radmul));
+  print "Training $iter iterations with alpha $alpha and radius $radius in $cod1\n";
+  $cmd = "./vsom -din $som -cin $cod0 -cout $cod1 -rlen $iter";
+  $cmd .= " -alpha $alpha -radius $radius";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $cod2 = $cod0;
+  $cod2 =~ s/-0\.cod$/-2.cod/;
+  print "Labeling units in $cod2\n";
+  $cmd = "./vcal -din $som -cin $cod1 -cout $cod2";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $eps = $cod0;
+  $eps =~ s/-0\.cod$/-2_p1.eps/;
+  print "Creating EPS visualization in $eps\n";
+  $cmd = "./planes -cin $cod2";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $pdf = $cod0;
+  $pdf =~ s/-0\.cod$/-2_p1.pdf/;
+  print "Converting to PDF in $pdf\n";
+  $cmd = "epstopdf $eps";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $samdat = $som;
+  $samdat =~ s/\.dat$/-sammon.dat/;
+  my $sameps = $samdat;
+  $sameps =~ s/\.dat$/_sa.eps/;
+  print "Creating Sammon mapping in $samdat and $sameps\n";
+  $cmd = "./sammon -cin $som -cout $samdat -rlen $samiter -eps";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+
+  my $sampdf = $sameps;
+  $sampdf =~ s/\.eps$/.pdf/;
+  print "Converting Sammon mapping to PDF in $sampdf\n";
+  $cmd = "epstopdf $sameps";
+  print "  $cmd\n";
+  $r = system(split(/ /, $cmd));
+  die "  ... failed\n" if $r;
+  print "\n";
+}
+
+#------------------------------------------------------------------------------
+
+# Local Variables:
+# perl-indent-level: 2
+# End:

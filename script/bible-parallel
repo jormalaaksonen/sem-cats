@@ -1,0 +1,510 @@
+#! /usr/bin/perl -s
+
+my $vers = '$Id: bible-parallel,v 1.19 2018/05/09 08:47:50 jlaakson Exp $';
+
+use strict;
+use diagnostics;
+
+use vars qw($help $version $copyright $fin $eng $dfin $deng $chk $all $del
+	    $book $verse $dump $list $debug);
+
+$| = 1;
+
+my $nl = "\n";
+my $dosfin = 1;
+my $datadir = "../data/";
+
+my %del = make_del();
+
+if ($version) {
+  print $vers,$nl;
+  exit 0;
+}
+
+if ($all) {
+  do_all($all);
+  exit 0;
+}
+
+if ($list) {
+  do_list();
+  exit 0;
+}
+
+if (!defined $fin && !defined $eng && defined $book) {
+  my $bk = expand_book($book);
+  die "-book=$book wasn't expanded correctly.$nl" unless $bk;
+  $fin = $datadir."38-$bk";
+  $eng = $datadir."eng-$bk";
+}
+
+if ($help || !defined $fin || !defined $eng) {
+  print "USAGE: $0 [-help] [-version] [-dfin] [-deng] [-chk] [-del] [-dump]",
+    " [-verse=xx:yy] -list | -all | -book=xx | -fin=xxx -eng=yyy$nl";
+  exit 1;
+}
+
+run_pair($fin, $eng);
+
+exit 0;
+
+#==============================================================================
+
+sub run_pair {
+  my ($fname, $ename) = @_;
+
+  open(FIN, $fname) || die "File <$fname> could not be opened.$nl";
+  my @fin = <FIN>;
+  close FIN;
+
+  my @fin_p = process_fin(\@fin);
+  print "process_fin() returned ", scalar @fin_p, " sentences\n"
+    if $debug;
+  
+  open(ENG, $ename) || die "File <$ename> could not be opened.$nl";
+  my @eng = <ENG>;
+  close ENG;
+
+  my @eng_p = process_eng(\@eng);
+  print "process_eng() returned ", scalar @eng_p, " sentences\n"
+    if $debug;
+
+  if ($chk) {
+    my $c_diff = scalar @fin_p != scalar @eng_p;
+    printf "%4d units in <$fname>, %4d units in <$ename> : counts %s$nl",
+      scalar @fin_p, scalar @eng_p,
+      $c_diff ? "DIFFER" : scalar @fin_p ? "are equal" : "ARE ZERO";
+
+    if (!pair_check(\@fin_p, \@eng_p)) {
+      print "     Numberings DIFFER between <$fname> and <$ename>$nl";
+    }
+  }
+
+  if ($dfin) {
+    foreach my $rfin ( @fin_p ) {
+      show_one($rfin);
+    }
+  }
+
+  if ($deng) {
+    foreach my $rend ( @eng_p ) {
+      show_one($rend);
+    }
+  }
+
+  if ($dump) {
+    for (my $i = 0; $i<=$#fin_p && $i<=$#eng_p; $i++) {
+      if ($i<=$#fin_p) {
+	print "fin: ";
+	show_one($fin_p[$i]);
+      }
+      if ($i<=$#eng_p) {
+	print "eng: ";
+	show_one($eng_p[$i]);
+      }
+      print $nl;
+    }
+  }
+}
+
+#==============================================================================
+
+sub process_fin {
+  my $r = shift;
+  my @in = @$r;
+  my @out;
+
+  my ($bk, $chap, $para, $line);
+
+  foreach my $l ( @in ) {
+    $_ = $l;
+    chomp;
+
+    print "FIN [$_]\n" if $debug;
+
+    $line =~ s/ +/ /g if defined $line;
+
+    tr/\204\224\206\216\231\217/äöåÄÖÅ/ if $dosfin;
+    s/\x0d$// if $dosfin;
+    s/ +$//;
+
+    if (/^$/) {
+      add_line(\@out, $bk, $chap, $para, $line);
+      undef $line;
+      print "... next 1\n" if $debug;
+      next;
+    }
+
+    if (uc($_) eq $_ && !/\d/ || $_ eq "Korkea Veisu" ||
+       $_ eq "DAlNIEL") {
+      $bk = $_;
+      print "... next 2 bk=\"$bk\"\n" if $debug;
+      next;
+    }
+
+    if (/^\| (.+\.)/) {
+      my $t = $1;
+      $t = $1 if $t =~ /\/(\d+)/;
+      $chap = $t;
+      print "... next 3 chap=\"$chap\"\n" if $debug;
+      next;
+    }
+
+    if (/^(\d+)\. (.+)/) {
+      add_line(\@out, $bk, $chap, $para, $line);
+
+      $para = $1;
+      $line = $2;
+      print "... next 4 [$bk] [$chap] [$para] [$line]\n" if $debug;
+      next;
+    }
+
+    $line .= " $_";
+    print "... next 5 [$line]\n" if $debug;
+  }
+
+  return @out;
+}
+
+#==============================================================================
+
+sub process_eng {
+  my $r = shift;
+  my @in = @$r;
+  my @out;
+
+  my ($bk, $chap, $para, $line);
+
+  foreach my $l ( @in ) {
+    my $x = $l;
+    chomp $x;
+
+    print "ENG [$x]\n" if $debug;
+
+    my @parts;
+    while ($x =~ /(.*?)(\d\d\d\s*:\s*\d\d\d\s+)(.+)/) {
+      print " PUSH [$1] [$2]\n" if $debug;
+      push @parts, $1;
+      push @parts, $2;
+      $x = $3;
+    }
+    push @parts, $x;
+
+    print " XXX [$x]$nl" if $debug;
+
+    foreach $_ ( @parts ) {
+      print " YYY [$_]$nl" if $debug;
+      print " LINE $line$nl" if $debug && defined $line;
+
+      $line =~ s/ +/ /g if defined $line;
+      $line =~ s/ $//   if defined $line;
+
+      $line =~ s/\s+([\.,;])/$1/g if defined $line;
+
+      next if /^$/;
+
+      if (/^(Book +)?\d\d (.+?) *$/) {
+	add_line(\@out, $bk, $chap, $para, $line);
+	$bk = $2;
+	undef $line;
+	next;
+      }
+
+      if (/^(\d\d\d)\s*:\s*(\d\d\d) $/) {
+	add_line(\@out, $bk, $chap, $para, $line);
+	$chap = $1;
+	$para = $2;
+	$chap =~ s/^0*//;
+	$para =~ s/^0*//;
+	undef $line;
+	next;
+      }
+
+      $line .= (defined $line?" ":"").$_;
+    }
+  }
+  add_line(\@out, $bk, $chap, $para, $line);
+
+  return @out;
+}
+
+#==============================================================================
+
+sub add_line {
+  my ($r, $bk, $chap, $para, $line) = @_;
+  if (!defined $line) {
+    print "add_line() : undef line\n" if $debug;
+    return;
+  }
+
+  if ($del && defined $del{$bk}) {
+    if (!@{$del{$bk}}) {
+      print "add_line() : empty delbk array bk=<$bk>\n" if $debug;
+      return;
+    }
+
+    foreach my $i ( @{$del{$bk}} ) {
+      if ($i eq "$chap:$para") {
+	print "add_line() : $i eq chap:para\n" if $debug;
+	return;
+      }
+    }
+  }
+
+  if (defined $verse && "$chap:$para" ne $verse) {
+    print "add_line() : $chap:$para ne $verse\n" if $debug;
+    return;
+  }
+
+  print "add_line() >>> [$bk] [$chap] [$para] [$line]\n" if $debug;
+
+  push @$r, [$bk, $chap, $para, $line];
+}
+
+#==============================================================================
+
+sub show_one {
+  my $r = shift;
+  my @a = @$r;
+
+  print "[$a[0]] ";
+  print "$a[1]:";
+  print "$a[2] ";
+  print "[$a[3]] ";
+  print $nl;
+}
+
+#==============================================================================
+
+sub pair_check {
+  my ($a, $b) = @_;
+
+  my ($i, $j) = ( 0, 0 );
+
+  while ($i<@$a && $j<@$b) {
+    my @ae = @{$$a[$i]};
+    my @be = @{$$b[$j]};
+    if ($ae[1] ne $be[1] || $ae[2] ne $be[2]) {
+      print "        ";
+      show_one($$a[$i]);
+      print "        ";
+      show_one($$b[$j]);
+      return 0;
+    }
+    $i++;
+    $j++;
+  }
+  return 1;
+}
+
+#==============================================================================
+
+sub expand_book {
+  my $bk = shift;
+
+  return "00-xx" if $bk eq "00";
+  
+  my @book = (
+	      "gn","ex","lv","nu","dt","js","jg","ru","1s","2s",
+	      "1k","2k","1x","2x","er","ne","es","jb","ps","pr",
+	      "ec","ca","is","jr","lm","ek","da","ho","jl","am",
+	      "ob","on","mi","na","ha","zp","hg","zc","ma","mt",
+	      "mk","lk","jn","ac","rm","1c","2c","ga","ep","pp",
+	      "cl","1q","2q","1t","2t","ti","fm","hb","jm","1p",
+	      "2p","1j","2j","3j","jd","rv"
+	     );
+
+  if ($bk =~ /^(\d\d)-(..)$/) {
+    my ($num, $nam) = ($1, $2);
+    return $bk if $book[$num-1] eq $nam;
+  }
+
+  if ($bk =~ /^\d+$/ && $bk>=1 && $bk<=66) {
+    return sprintf("%02d-", $bk).$book[$bk-1];
+  }
+
+  foreach my $i ( 0 .. 65 ) {
+    if ($book[$i] eq $bk) {
+      return sprintf("%02d-", $i+1).$bk;
+    }
+  }
+
+  return undef;
+}
+
+#==============================================================================
+
+sub do_list {
+  foreach my $i ( 0 .. 65 ) {
+    print expand_book($i+1),$nl;
+  }
+}
+
+#==============================================================================
+
+sub is_new_testament {
+  my $s = shift;
+  return $s>38;
+}
+
+#==============================================================================
+
+sub do_all {
+  my $s = shift;
+  foreach my $i ( 0 .. 65 ) {
+    next if $s eq "ut" && !is_new_testament($i);
+    next if $s eq "vt" &&  is_new_testament($i);
+    my $bk = expand_book($i+1);
+    run_pair($datadir."38-$bk", $datadir."eng-$bk");
+  }
+}
+
+#==============================================================================
+
+ sub make_del {
+  return
+    (
+#     # 02-ex
+#     # "TOINEN MOOSEKSEN KIRJA"=>["12:50"],
+#     # "Exodus"                =>["12:50", "12:51"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the English data. Added the number of a verse
+# which was empty.
+
+#     # 04-nu
+#     #"NELJÄS MOOSEKSEN KIRJA"=>[],
+#     #"Numbers"=>[],
+
+#     # 09-1s
+#     #"ENSIMMÄINEN SAMUELIN KIRJA"=>["20:42", "20:43"],
+#     #"1 Samuel"                  =>["20:42"],
+#     "ENSIMMÄINEN SAMUELIN KIRJA"=>[],
+#     "1 Samuel"                  =>[],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the English data. Added the number of verse
+# which was empty.
+
+#     # 10-2s
+#     "TOINEN SAMUELIN KIRJA"=>["5:24"],
+#     "2 Samuel"             =>["5:24", "5:25"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the number of a verse
+# which was empty.
+
+#     # 11-1k
+#     #"ENSIMMÄINEN KUNINGASTEN KIRJA"=>[],
+#     #"1 Kings"=>[],
+
+#     # 16-ne
+#     #"NEHEMIA"=>[],
+#     #"Nehemiah"=>[],
+
+#     # 18-jb
+#     #"JOB"=>[],
+#     #"Job"=>[],
+
+#     # 19-ps
+#     #"PSALMIT"=>[],
+#     #"Psalms"=>[],
+
+#     # 21-ec
+#     #"SAARNAAJA"=>[],
+#     #"Ecclesiastes"=>[],
+
+#     # 22-ca
+#     #"Korkea Veisu"=>[],
+#     #"Song of Solomon"=>[],
+
+#     # 23-is
+#     #"JESAJA"=>[],
+#     #"Isaiah"=>[],
+
+#     # 27-da
+#     #"DAlNIEL"=>[],
+#     #"Daniel"=>[],
+
+#     # 28-ho
+#     #"HOOSEA"=>[],
+#     #"Hosea"=>[],
+
+#     # 32-on
+#     #"JOONA"=>[],
+#     #"Jonah"=>[],
+
+#     # 33-mi
+#     #"MIIKA"=>[],
+#     #"Micah"=>[],
+
+#     # 38-zc
+#     "SAKARJA"  =>["12:13"],
+#     "Zechariah"=>["12:13", "12:14"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the numbers of verses
+# which were empty.
+
+#     # 40-mt
+#     # ""=>[""],
+#     "Matthew"=>["17:21", "18:11", "23:14"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the numbers of verses
+# which were empty.
+
+#     # 41-mk
+#     # ""=>[""],
+#     "Mark"=>["9:44", "9:46", "11:26", "15:28"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the numbers of verses
+# which were empty.
+
+#     # 42-lk
+#     # ""=>[""],
+#     "Luke"=>["17:36", "23:17"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data.
+
+#     # 43-jn
+#     # ""=>[""],
+#     "John"=>["5:4"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the number of a
+# verse which was empty.
+
+#     # 44-ac
+#     "APOSTOLIEN TEOT"=>[                 "19:40"],
+#     "Acts"           =>["8:37", "15:34", "19:40", "19:41", "24:7", "28:29"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. Added the numbers of verses
+# which were empty. The last senence of vers 19:40 was moved to verse 41. 
+
+#     # 47-2c
+#     "PAAVALIN TOINEN KIRJE KORINTTOLAISILLE"=>["13:12", "13:13"],
+#     "2 Corinthians"                         =>["13:12", "13:13", "13:14"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the Finnish data. The last sentence of verse 12
+# is moved to sentence 13, and the old sentence 13 is renumerated 
+# to sentence 14.
+
+#     # 64-3j
+#     "JOHANNEKSEN KOLMAS KIRJE"=>["1:14", "1:15"],
+#     "3 John"                  =>["1:14"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the English data. Separated the last three 
+# sentences of vers 001:014 and moved them to vers 001:015, which 
+# is new in this chapter.
+
+#     # 66-rv
+#     "JOHANNEKSEN ILMESTYS"=>["12:18"],
+# Corretions: the correspondences of the content of the phrases 
+# are corrected in the English data. Added the number of a verse
+# which was empty.
+#     # ""=>[""],
+
+     # 
+#     # ""=>[""],
+#     # ""=>[""],
+    );
+}
+
+#==============================================================================
+
+

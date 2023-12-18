@@ -1,0 +1,11 @@
+#P. Suihkonen, 24.11.2017
+#
+@be
+am
+are
+be
+is
+was
+were
+wast
+wert

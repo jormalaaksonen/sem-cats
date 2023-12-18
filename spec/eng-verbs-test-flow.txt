@@ -1,0 +1,7 @@
+#P. Suihkonen, 24.11.2017
+#
+@flow
+flew
+flow
+flowed
+floweth

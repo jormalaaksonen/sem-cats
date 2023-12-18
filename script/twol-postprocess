@@ -1,0 +1,332 @@
+#! /usr/bin/perl -s
+
+my $vers = '$Id: twol-postprocess,v 1.4 2006/11/21 11:13:25 jtlaakso Exp $';
+
+use strict;
+use diagnostics;
+use bytes;
+
+use vars qw($help $version $copyright $rejects $word $spec $check);
+
+my $nl = "\n";
+
+my @words;
+my @reject;
+my @spec;
+
+my $maxl = 0;
+
+read_spec($spec) if $spec;
+
+if ($check) {
+  die "Also -spec=xxx.spec should be given with -check$nl" unless $spec;
+  check_spec(\@spec);
+  exit 0;
+}
+
+read_input();
+
+print_rejects()               if $rejects;
+print_word(\@words, $word, 1) if defined $word;
+
+#------------------------------------------------------------------------------
+
+sub read_spec {
+  my $fname = shift;
+
+  my $hdr = 1;
+  my $longest;
+
+  open IN, $fname;
+  while (<IN>) {
+    chomp;
+    next if /^#/;
+    if (/^\s*$/) {
+      $hdr = 0;
+      next;
+    }
+
+    die "Failed to split [$_]$nl" unless /^([-\w]+):\s*(.*?)\s*$/;
+
+    next if $hdr;
+
+    my ($key, $val) = ($1, $2);
+    my $s = find_key_in_spec($key);
+    die "Doubly defined [$key]$nl" if $s;
+
+    my $r = [ $key ];
+    push @spec, $r;
+
+    check_spec_triplet() if @spec%3==0;
+
+    my $v = [];
+    push @$r, $v;
+
+    @$v = split /\s*[&\|,]\s*/, $val;
+
+    my %x;
+    foreach my $z ( @$v ) {
+      my @p = split /\s+/, $z;
+      $z = join " ", @p;
+
+      if (@p>$maxl) {
+	$maxl = @p;
+	$longest = $z;
+      }
+
+      if ($x{$z}) {
+	print "DOUBLY DEFINED [$z] in ";
+	print_rule($r);
+      }
+
+      $x{$z} =1;
+    }
+    #print "[", join("][", @$v), "]$nl";
+  }
+  close IN;
+
+  print scalar(@spec), " rules read from <$fname>.  The longest rule ",
+    "[$longest] contains $maxl words.$nl";
+}
+
+#------------------------------------------------------------------------------
+
+sub find_key_in_spec {
+  my $k = shift;
+  foreach my $s ( @spec ) {
+    return $s if $$s[0] eq $k;
+  }
+
+  return undef;
+}
+
+#------------------------------------------------------------------------------
+
+sub find_words_in_spec {
+  my @w = @_;
+  my @v;
+  my $f;
+  my @ret;
+
+  foreach my $a ( @w ) {
+    my $b = $$a[0];
+    $b = substr($b, 1) if substr($b, 0, 1) eq "*";
+    # print "[$b]";
+    push @v, $b;
+    $f .= "$b ";
+  }
+  $f = substr($f, 0, length($f)-1);
+
+  #print "[$f]$nl";
+
+  foreach my $s ( @spec ) {
+    my $l = $$s[1];
+    next unless @$l;
+    #print_rule($s);
+    foreach my $b ( @$l ) {
+      next unless $b eq $f;
+
+      #print "**HIT** "; print_rule($s);
+      push @ret, $s;
+    }
+  }
+
+  return @ret;
+}
+
+#------------------------------------------------------------------------------
+
+sub check_spec_triplet {
+  my $a = $spec[-3][0];
+  my $b = $spec[-2][0];
+  my $c = $spec[-1][0];
+
+  #print "[$a] [$b] [$c]$nl";
+
+  die "Not -C in [$a]$nl"   if substr($a, -2) ne "-C";
+  die "Not -PRP in [$b]$nl" if substr($b, -4) ne "-PRP";
+  die "Not -POP in [$c]$nl" if substr($c, -4) ne "-POP";
+
+  my $ar = substr($a, 0, length($a)-2);
+  my $br = substr($b, 0, length($b)-4);
+  my $cr = substr($c, 0, length($c)-4);
+
+  #print "[$ar] [$br] [$cr]$nl";
+
+  die "Mismatch in [$a] [$b] [$c]$nl" if $ar ne $br || $ar ne $cr;
+}
+
+#------------------------------------------------------------------------------
+
+sub check_spec {
+  my $sp = shift;
+
+  my $show_all = 0;
+
+  my %w;
+  foreach my $r ( @$sp ) {
+    my @s  = @$r;
+    my $ss = $s[0];
+    foreach my $z ( @{$s[1]} ) {
+      $w{$z} = 1;
+      #print "$ss : [$z]$nl";
+    }
+  }
+
+  my @w = sort keys %w;
+
+  foreach my $k ( @w ) {
+    my @wds;
+    foreach my $l ( split(/ /, $k) ) {
+      push @wds, [ $l ];
+    }
+
+    my @rules = find_words_in_spec(@wds);
+
+    next if !$show_all && @rules==1;
+
+    print_words(\@wds, 0);
+
+    print "   NO RULES FOUND!$nl" unless @rules;
+
+    foreach my $r ( @rules ) {
+      print "   "; print_rule($r);
+    }
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub read_input {
+  my $ref;
+
+  while (<>) {
+    chomp;
+
+    if (/^"<([\*a-zдце=]+)>"$/) {
+      $ref = add_word($1);
+
+    } elsif (/^"<\$?\.>"$/ || /^"<\d+:\d+>"$/) {
+      add_period();
+
+    } elsif (/^\t"([\*a-zдце=]+)" (.+)$/) {
+      add_analysis($ref, $1, split(/ +/, $2));
+
+    } else {
+      push @reject, $_;
+      undef $ref;
+    }
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub add_word {
+  my $word = shift;
+
+  my $r = [];
+
+  push @words, $r;
+  push @$r, $word;
+
+  return $r;
+}
+
+#------------------------------------------------------------------------------
+
+sub add_period {
+  return unless @words;
+
+  print_words(\@words, 0);
+
+  process_sentence();
+
+  @words = ();
+}
+
+#------------------------------------------------------------------------------
+
+sub process_sentence {
+  for (my $i=0; $i<=$#words; $i++) {
+    my @w;
+    foreach my $j ( $i .. $#words ) {
+      next if $j-$i>=$maxl;
+
+      push @w, $words[$j];
+    }
+
+    while (@w) {
+      #print ">>> "; print_words(\@w, 0);
+      my @s = find_words_in_spec(@w);
+      if (!@s) {
+	pop @w;
+	next;
+      }
+      print "   "; print_words(\@w, 0);
+      foreach my $r ( @s ) {
+	print "      "; print_rule($r);
+      }
+      $i += @w-1;
+      last;
+    }
+  }
+}
+
+#------------------------------------------------------------------------------
+
+sub print_rule {
+  my $s = shift;
+  my $l = $$s[1];
+  print $$s[0], " (", join(")(", @$l), ")$nl";
+}
+
+#------------------------------------------------------------------------------
+
+sub add_analysis {
+  my ($r, $word, @a) = @_;
+
+  push @$r, [ $word, @a ];
+}
+
+#------------------------------------------------------------------------------
+
+sub print_rejects {
+  print join($nl, @reject).$nl;
+}
+
+#------------------------------------------------------------------------------
+
+sub print_words {
+  my ($x, $long) = @_;
+
+  foreach my $i ( 0 .. $#$x ) {
+    print_word(\@$x, $i, $long);
+  }
+
+  print "===========================================================" if $long;
+  print $nl;
+}
+
+#------------------------------------------------------------------------------
+
+sub print_word {
+  my ($x, $i, $long) = @_;
+
+  my $r = $$x[$i];
+
+  print $$r[0], $long ? $nl : " ";
+
+  for (my $j=1; $long && $j<@$r; $j++) {
+    my @a = @{$$r[$j]};
+
+    print "  ", join(" ", @a), $nl;
+  }
+}
+
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+
+
