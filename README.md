@@ -29,4 +29,9 @@ data - The used data.
 
 Jorma Laaksonen <jorma.laaksonen@aalto.fi>
 
+## copyright
+
+© 2006–2023 Pirkko Suihkonen & Jorma Laaksonen
+
+
 
