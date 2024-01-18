@@ -1,6 +1,6 @@
-#! /appl/opt/perl/5.30.0/bin/perl -s
-
 #! /usr/bin/perl -s
+
+#! /appl/opt/perl/5.30.0/bin/perl -s
 #! /projappl/project_2002035/localperl/bin/perl -s
 
 # xxx xxx xxx verb verb xxx xxx adpos adpos // dist==2
