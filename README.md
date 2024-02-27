@@ -24,7 +24,7 @@ Parallel Database. LINCOM Studies in Theoretical Linguistics. ISBN
 
 The input data consists of the Finnish and English translations of the Holy Bible. The Finnish translation is from the 1933 (the Old Testament) and 1938 (the New Testament) of The Finnish Church Bible. The English translation is the Project Gutenberg edition of the King James Bible (Second Version, 10th Edition) published in 1611.
 
-The books of each translation have have been stored in separate files.  The naming of the files follows the pattern `38-<NN>-<BB>` for the Finnish books and `eng-<NN>-<BB>` for the English ones.  Here, `<NN>` is a two-digit numerical index of the books (from 01 to 39 in the Old Testament and from 40 to 66 in the New Testament) and `<BB>` is a two-letter acronym for the book (e.g. "gn" for Genesis and "rv" for Revelation) common in both languages.  The input file names do not have any extensions.
+The books of each translation have been stored in separate files.  The naming of the files follows the pattern `38-<NN>-<BB>` for the Finnish books and `eng-<NN>-<BB>` for the English ones.  Here, `<NN>` is a two-digit numerical index of the books (from 01 to 39 in the Old Testament and from 40 to 66 in the New Testament) and `<BB>` is a two-letter acronym for the book (e.g. "gn" for Genesis and "rv" for Revelation) common in both languages.  The input file names do not have any extensions.
 
 The character encoding of the books in English is ASCII.  The books in Finnish are encoded in the CP437 ("IBM PC") character set.  As this encoding is deprecated, the Finnish files are provided for the convenience of inspection also in the UTF-8 encoding with the `.utf8` file name extension.
 
