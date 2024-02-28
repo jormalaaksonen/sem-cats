@@ -4,7 +4,7 @@ Semantic categories of adpositions in the English and Finnish languages.
 
 This repository relates to the book:
 
-Pirkko Suihkonen & Jorma Laaksonen (2023): Syntax and Semantics of
+Pirkko Suihkonen & Jorma Laaksonen (2024): Syntax and Semantics of
 Adpositions and Case Marking: Description of Prepositions in English
 and Adpositions and Case Marking in Finnish within the Framework of a
 Parallel Database. LINCOM Studies in Theoretical Linguistics. ISBN
