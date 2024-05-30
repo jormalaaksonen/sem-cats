@@ -1,4 +1,4 @@
-#Pirkko Suihkonen, Feb. 8, March 21, 2018.
+#Pirkko Suihkonen (Copyright), Feb. 8, March 21, 2018.
 #Verblist for statistical analysis.
 # 
 @behold    
@@ -36,7 +36,7 @@ do
 doest      
 doeth     
 doing     
-done    
+done
 @dwell
 dwell     
 dwelled      

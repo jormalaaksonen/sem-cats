@@ -1,9 +1,10 @@
-#Pirkko Suihkonen, May 21, 2018. 
+#Pirkko Suihkonen, May 21, 2018.
+# Copyright: Pirkko Suihkonen
 #
 # The list of complex verbs (verbs which are combined with 
 # prepositions). The original list of verbs is collected from the
 # list of verbs of WordNet. The verbs which have other kind of
-# modificatons, or which contain other kinds of combinations,
+# modifications, or which contain other kinds of combinations,
 # are ignored with the help of the character #. 
 #
 # Copyright of the original list of verbs: WordNet.
@@ -66,4 +67,4 @@ CMPL-V-EXCL: ^((answer for)|
   ((turn|turned) (around|aside|back|down|in|on|over|off|out|(over into)|
   ((work|worked) (at|in|off|on|out|over|through|up)))))
 #
-
+END:

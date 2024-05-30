@@ -1,4 +1,4 @@
-#Pirkko Suihkonen, 24 Nov 2017
+#Pirkko Suihkonen (Copyright), 24 Nov 2017
 #
 ENG-VERBS-TEST: (am|are|is|was|were|wast|wert|
   flow|flew|flowed|floweth|

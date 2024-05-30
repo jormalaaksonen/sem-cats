@@ -1,5 +1,5 @@
-#Pirkko Suihkonen, 2016 and 2018
-#Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2016 and 2018
+#
 #
 #TRL (-kse/ksi)
 #

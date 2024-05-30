@@ -2,9 +2,9 @@
 #Copyright: Pirkko Suihkonen
 #
 # Kommentteja ensin:
-#  1) tama on vasta kokeilu, jolla testataan INCLUDE:n toimintaa fin.spec:ssa
-#  2) pitkat saannot voidaan jakaa useille riveille...
-#  3) isot kirjaimet eivat ole sallittuja
+#  1) tämä on vasta kokeilu, jolla testataan INCLUDE:n toimintaa fin.spec:ssa
+#  2) pitkät säännöt voidaan jakaa useille riveille...
+#  3) isot kirjaimet eivät ole sallittuja
 #
 # ILL-EXCL-PRP: aanan|aanemin|aaner|aanerin|aanerille|aanim|aanub|
 #  aasiaa|ahinoamista|ahinoamin|israelissa)(POSS-SFX?CLT-SFX?)|

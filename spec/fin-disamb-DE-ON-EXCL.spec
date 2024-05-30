@@ -1,5 +1,5 @@
-#Pirkko Suihkonen, 2016 & 2017
-# Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2016 & 2017
+# 
 #
 # ABL (-lta/-ltä)
 #

@@ -4,11 +4,11 @@
 # ABL (-lta/-ltä)
 #
 # Agreement in NPs: 
-# only one case marking is accepted in the NP:s which contain specifiers 
+# only one case marking is accepted in the NPs which contain specifiers 
 # and modifiers preceeding the lexical head which is a noun: 
 # tä+ltä piene+ltä poja+lta. 
 #
-# The words inside the parentheses contain the combinations <lta> and <ltä> 
+# The words inside the parentheses contain the combinations "lta" and "ltä" 
 # which are homonymous with the indices of the ablative case 
 # (fin.spec, Rule 2.2, ABL-C and adpositions) in Finnish. 
 #

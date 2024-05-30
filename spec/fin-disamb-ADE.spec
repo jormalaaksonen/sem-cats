@@ -8,7 +8,7 @@
 # modifiers preceeding the lexical head which is a noun: 
 # tä+llä piene+llä poja+lla. 
 #
-# The words inside the parentheses contain the combinations <lla> and <llä> 
+# The words inside the parentheses contain the combinations "lla" and "llä" 
 # which are homonymous with the indices of the adessive case 
 # (fin.spec, Rule 1.2, ADE-C and adpositions) in Finnish. 
 #

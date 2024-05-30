@@ -1,6 +1,5 @@
+#Pirkko Suihkonen (Copyright), 2016 and 2017
 #
-#Pirkko Suihkonen , 2016 and 2017
-#Copyright: Pirkko Suihkonen
 #
 # ELA (-sta/-stä)
 # Agreement in NPs: 

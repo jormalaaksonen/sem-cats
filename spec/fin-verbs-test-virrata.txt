@@ -1,4 +1,4 @@
-#P. Suihkonen, 24.11.2017
+#Pirkko Suihkonen (Copyright), 24.11.2017
 #
 @virrata: 
 virrata

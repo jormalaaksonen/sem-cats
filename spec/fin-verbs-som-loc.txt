@@ -1,9 +1,9 @@
-# Pirkko Suihkonen, Feb. 8, 20, March 21, 2018.
+# Pirkko Suihkonen (Copyright), Feb. 8, 20, March 21, 2018.
 # A short list of the Finnish verbs. The verb list is collected
 # with the help of the files "fin-all-verbs-data", "fin-ot-verbs-data"
 # and "fin-nt-verbs-data" which contain information on the frequencies
 # of the verbs in the Bilbe translated into Finnish.
-# 
+#
 @asua
 asu
 asui

@@ -1,5 +1,5 @@
-#Pirkko Suihkonen, 2016 and 2017
-#Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2016 and 2017
+#
 #
 ON-C-EXCL:  ^((((aas|amarj|barnaba|bel|beri|bilg|eli|esr|etiopi|goomer-mit|
   hilki|hoomer-mit|hoos|jedaj|jeremi|juuda|lee|mattitj|meselemj|miik|

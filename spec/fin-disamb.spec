@@ -1,12 +1,9 @@
 #! /usr/bin/perl -s
-#Pirkko Suihkonen, 2016
-#Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2015, 2016
 #
 #Sanojen vartaloiden monitulkintaisuuksien eliminointia
-#Pirkko Suihkonen, 2015
-#Copyright: Pirkko Suihkonen
-
-#Name: Finnish		
+#
+#Name of the language: Finnish		
 #Family: Uralic languages	
 #Sub-branch: Baltic-Finnic languages
 #code: fin

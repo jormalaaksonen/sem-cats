@@ -1,6 +1,6 @@
 # Pirkko Suihkonen, May 2, 2018 (copyright).
 #
-# The disambiguation files dealing with the grammatical rules on  English
+# The disambiguation files dealing with the grammatical rules on English
 # containing words homonymous with prepositions, or information on the 
 #  context. The file is prepared with the help of the kwic concordance 
 # consisting of the occurrences of the words in the English translations 

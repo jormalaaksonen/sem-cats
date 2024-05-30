@@ -1,6 +1,7 @@
-#Pirkko Suihkonen,  May 31, 2017
+#Pirkko Suihkonen (Copyright),  May 31, 2017
+#
 # The finite forms of verbs in the Bible translated into Finnish.
-# $Id: fin-verbs-data-finite-forms.txt,v 1.2 2018/11/24 17:09:25 suihkone Exp $	
+# $Id: fin-verbs-data-finite-forms.txt,v 1.3 2024/05/30 14:29:51 jlaakson Exp $	
 # The finite forms of verbs collected from the Bible translated into Finnish 
 # are organized with the help of the infinitive forms marked with the 
 # character "@", e.g. @aaltoilla", etc. 

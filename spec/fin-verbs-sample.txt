@@ -1,4 +1,4 @@
-# Pirkko Suihkonen, Feb. 2017 and March - April  2018.
+# Pirkko Suihkonen (Copyright), Feb. 2017 and March - April  2018.
 # A short list of the Finnish verbs. The list is collected
 # with the help of the files "fin-all-verbs-data" 
 # in which the verbs are grouped with respect to

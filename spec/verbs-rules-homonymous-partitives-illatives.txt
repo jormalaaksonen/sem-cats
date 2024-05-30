@@ -1,0 +1,153 @@
+#Pirkko Suihkonen (Copyright), 2018?
+#
+Liitettävä tiedostoon fin.spec:
+#
+# Inflectional paradigms of the verb olla:
+#olla + PTV
+# Inflectional paradigms of the negative verb ei and its imperative form älä:
+# NEG+PTV
+# The stem types of verbs: 
+# weak vowel stem: VERB-R-V-W;
+# strong vowel stem: VERB-R-V-S; 
+# consonant stem: VERB-R-C:
+# 
+# VERB-R-V-W: w\((SYLL(SYLL))V)|((SYLL(SYLL(SYLL)))V)
+# VERB-R-V-S: w\(V)
+# VERB-R-C: w\(C)
+# VERB-NEG: 
+# VERB-BE:
+#
+#(ACT-PRES|ACT-PAST|ACT-COND-I|ACT-COND-II|ACT-POT-I|ACT-POT--II)
+#(PASS-PRES|PASS-PAST|PASS-PERF|PASS-PERF-PAST)
+#(PASS-NEG-PRES|PASS-NEG-PAST|PASS-NEG-PERF|PASS-NEG-PERF-PAST|
+#PASS-NEG-COND-I|PASS-NEG-COND-II| PASS-NEG-POT-I|PASS-POT-NEG-II)
+
+# Weak vowel stem: 
+# Nouns: inessive, elative, abessive, ablative, allative, 
+# and instructive; genitive singular (-n),  
+# the plural genitive: -ten: after consonants:
+# -en: after a short i and j which is after a short vowel;
+# -den/-tten: after diphtongs and the long i marked with -ii-;
+# kaunis - kauniiden, kauniin, vieras - vieraan, vieraiden, 
+# iloinen - iloisen, iloista, iloiseen;
+#
+INF: Tämä ryhmä paitsi INF-I, INF-IV ja INF-V on jo tiedstossa fin.spec. 
+# Muodot on jo testattu. Lisätään puuttuvat ryhmät ja yhdistetään säännöt.
+#
+INF-I:  \w(VERB-R (a|ä|da|dä|la|lä|ta|tä|na|nä|ra|rä))
+INF-II:  \w((VERB-R-V-S|VERB-R-V-C)(e|de|te|le|ne|re))
+INF-III: \w(VERB-R-V-S|VERB-R-V-C)(ma|mä))
+INF-IV: \w(VERB-R-V-S(minen|mis))
+INF-V: \w(VERB-R-V-S(maisilla|mäisillä))
+INF: (INF-I|INF-II|INF-III|INF-IV|INF-V)
+#
+PCPL: Tämä ryhmä paitsi sääntö ACT-PCPL-NEG on jo tiedstossa fin.spec. 
+Muodot on jo testattu. Lisätään puuttuva tiedosto ja yhdistetään PCPL-säännöt.
+#
+ACT-PCPL-I: \w(((VERB-R-V-S|(ta|tä))(va|vä|(v(i)))
+ACT-PCPL- II: \w((VERB-R-V-S|VERB-R-V-C)((lut|lyt|nut|nyt|rut|ryt|sut|syt)|
+(lee|nee|ree|see)| W\(leet|neet|reet|seet)))
+ACT-PCPL-III: \w(VERB-R-V-S(ma|mä))
+ACT-PCPL-NEG: \w(VERB-R-V-S((maton|mätön)|(mattoma|mättömä)))
+#
+Nämä säännöt ovat uudet:
+PASS-PCPL-I: w\(((VV|DIPH|VERB-R-V-C)(ta|tä))va|vä|(v(i)))
+PASS-PCPL-II: \w(((VV|DIPH)|(VERB-R-V-C))( (du|dy|lu|ly|ru|ry|tu|ty|u|y))
+PASS-PCPL-II-L: \w((VV|DIPH|V))(ttu|tty|tu|ty)) 
+
+# PCPL: (ACT-PCPL-I|ACT-PCPL- II|ACT-PCPL-NEG|PASS-PCPL-I|PASS-PCPL-II|PASS-PCPL-II-L)
+#
+# Conditionals
+ACT-COND-I: \w(V-R(isi(VERB-PERS)))
+ACT-COND-II: \w(olisi(VERB-PERS) VERB-R(ACT-PCPL-II))
+#
+PASS-COND-I: \w(V-R((ta|tä|tta|ttä)isiin) PCPL-II))
+PASS-COND-II: \w((olisi) (V-R(PCPL-II|PCPL-II-L)))
+COND: (ACT-COND-I|ACT-COND-II|PASS-COND-I|PASS-COND-II)
+#
+# Potentials:
+ACT-POT-I: \w((ne)(VERB-PERS)
+ACT-POT-II: \w((liene)(VERB-PERS) (ACT-PCPL- II))
+#
+PASS-POT-I: \w((tane|täne)(VERB-PERS)
+PASS-POT-II: \w((liene)(VERB-PERS) (PASS-PCPL- II|PASS-PCPL-II-L))
+POT: (ACT-POT-I|ACT-POT-II|PASS-POT-I|PASS-POT-II)
+#
+# Personal inflection:
+VERB-1SG: \w(n)
+VERB-2SG: \w(t)
+VERB-3SG: \w(V)
+VERB-1PL: \w(mme)
+VERB-2PL: \w(tte)
+VERB-3PL: \w(vat|vät)
+VERB-PERS: (VERB-1SG|VERB-2SG|VERB-3SG|VERB-1PL|VERB-2PL|VERB-3PL)
+#
+# Personal inflection of the verb olla ‘to be’: personal inflection:
+VERB-BE-PERS-1SG: ((ole)VERB-1SG)|
+VERB-BE-PERS-2SG: ((ole)VERB-2SG)|
+VERB-BE-PERS-3SG: ((o)VERB-3SG)|
+VERB-BE-PERS-1PL: ((ole)VERB-1PL)|
+VERB-BE-PERS-2PL: ((ole)VERB-2PL)|
+VERB-BE-PERS-3PL: ((o(VERB-3PL))
+VERB-BE-COND-I: ((ol)isi) 
+VERB-BE-COND-II: (((VERB-BE-COND-I (VERB-BE-PCPL-II))
+VERB-BE-POT-I: (((lie)ne)VERB-PERS)
+VERB-BE-POT-II: (((VERB-BE-POT-I) (VERB-BE-PCPL-II))
+VERB-BE-INF-I: ((ol)la)
+VERB-BE-PCPL-I: (ole(va))
+VERB-BE-PCPL-II): (ol(lut))
+#
+PASS-BE-PRES: (((ol)la)an)
+PASS-BE-PAST: (((ol)ti)in)
+PASS-BE-PCPL-I: (((ol)ta)va)
+PASS-BE-PCPL-I: ((ol)tu)
+#
+Tähän saakka säännöt viety tiedostoon fin.spec (31.3.klo 11.49)
+#
+ACT- IMP-VERB-BE-2SG: w\(ole)
+ACT- IMP-VERB-BE-3SG: w\(ol(koon|köön)) 
+ACT- IMP-VERB-BE-1PL: w\(ol((kaa|kää)VERB-3SG))
+ACT- IMP-VERB-BE- 2PL: w\(ol(kaa|kää)VERB-2PL))
+ACT- IMP-VERB-BE-3PL: w\(ol((koo|köö)t))
+PASS-IMP- VERB-BE: w\((ol(ta|tä))(koon|köön))
+#
+(VERB-BE-PERS: (VERB-BE-PERS-1SG|VERB-BE-PERS-2SG|VERB-BE-PERS-3SG|VERB-BE-PERS-1PL|VERB-BE-PERS-2PL|VERB-BE-PERS-3PL| ACT- IMP-VERB-BE-2SG|ACT- IMP-VERB-BE-3SG|ACT- IMP-VERB-BE-1PL|ACT- IMP-VERB-BE-3PL|PASS-IMP- VERB-BE)
+#
+# Negative verb, personal inflection:
+VERB-NEG-PERS-1SG: W\(((e)VERB-1SG)(( ACT- IMP-VERB-BE-2SG)|ollut|COND-I|liene)
+VERB-NEG-PERS-2SG: W\(((e)VERB-2SG)(ole|ollut|COND-I|liene)
+VERB-NEG-PERS-3SG: W\(((e)i) (ole|ollut|COND-I|POT-I)
+VERB-NEG-PERS-1PL: W\(((e)VERB-1PL)(ole|ollut|COND-I|POT-I)
+VERB-NEG-PERS-2PL: W\(((e(VERB-2PL)(ole|ollut|COND-I|POT-I)
+VERB-NEG-PERS-3PL: W\(((e)i)VERB-3PL)(ole|ollut|COND-I|POT-I)
+#
+VERB-CONNEG: (PRES=IMP-SG| CONNEG: PAST=PCPL-I|PCPL-II| CONNEG: COND| CONNEG: POT)
+#
+# Passive:
+VERB-PASS-NEG-PERS: (VERB-NEG-PERS-3SG)  ((VERB-BE-INF-I|VERB-BE-PCPL-II|VERB-BE-COND-I|VERB-BE-COND-I VERB-BE-PCPL-II|VERB-BE-POT-Ioltane))
+#
+VERB-NEG-PERS: (VERB-NEG-PERS-1SG|VERB-NEG-PERS-2SG|VERB-NEG-PERS-3SG|VERB-NEG-PERS-1PL|VERB-NEG-PERS-2PL|VERB-NEG-PERS-3PL|VERB-PASS-NEG-PERS)
+#
+# Present tense:
+w\(VERB-PERS)
+# Past tense:
+w\(i(VERB-PERS))
+# Perfect tense:
+# Present tense:
+#
+# Active, imperative, negative verb:
+VERB-NEG: ACT-IMP-2SG: ((älä) (VERB-R-V-S|VERB-R-V-C))
+VERB-NEG: ACT-IMP-3SG: (äl(köön ((VERB-R-V-S|VERB-R-V-C)(ko|kö)))
+VERB-NEG: ACT-IMP-1PL: (((äl)kää)VERB-1PL) ((VERB-R-V-S|VERB-R-V-C)(ko|kö)))
+VERB-NEG: ACT-IMP-2PL: ((äl)kää) ((VERB-R-V-S|VERB-R-V-C)(ko|kö)))
+VERB-NEG: ACT-IMP-3PL: (((äl)kööt) ((VERB-R-V-S|VERB-R-V-C)(ko|kö)))
+VERB-NEG: PASS-IMP: ((äl(köön) (VERB-R-V-S|VERB-R-V-C)(ta|tä)(ko|kö)
+
+# Active, imperative:
+ACT-IMP-2SG: (VERB-R-V-S|VERB-R-V-C)
+ACT-IMP-3SG: ((VERB-R-V-S|VERB-R-V-C)(koon|köön)) 
+ACT-IMP-1PL: ((VERB-R-V-S|VERB-R-V-C)((kaa|kää)1PL))
+ACT-IMP-2PL: ((VERB-R-V-S|VERB-R-V-C)(kaa|kää)) 
+ACT-IMP-3PL: ((VERB-R-V-S|VERB-R-V-C)((koo|köö)3PL))
+PASS-IMP: ((VERB-R-V-S|VERB-R-V-C)((ta|tä)(koon|köön)))
+

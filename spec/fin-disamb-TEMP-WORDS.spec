@@ -1,9 +1,9 @@
-#Pirkko Suihkonen, 2006, 2007, 2015, 2017 
-#Copyright: Pirkko Suihkonen 
-#Name: Finnish 
+#Pirkko Suihkonen (Copyright), 2006, 2007, 2015, 2017 
+# 
+#Name of the language: Finnish 
 #Family: Uralic languages 
 #Sub-branch: Baltic-Finnic brance of the Finno-Ugric languages 
-#code: eng 
+#code: fin
 # The list of words contains nouns and some pronouns which 
 # occur in temporal expressions.
 #

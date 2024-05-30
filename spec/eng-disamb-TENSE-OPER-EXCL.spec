@@ -1,12 +1,14 @@
-# Pirkko Suihkonen, 12 Feb. 2018; eng. 
+# Pirkko Suihkonen, 12 Feb. 2018; (Copyrigth Pirkko Suihkonen) 
 #
 # Periphrastic mood and tense forms in English in which the verb "be" 
 # (the dictionary form) and "been" (past participle (PCPL-II)) 
 # are operators:
+#
 # Indicative:
 # the passive forms in present, past, perfect, pluperfect, future, 
 # in the progressive passive, present, past, perfect, pluperfect, 
 # and future:
+#
 # Conditional:
 # conditional I and conditional II in passeive.
 #

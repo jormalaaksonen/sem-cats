@@ -1,4 +1,4 @@
-# Pirkko Suihkonen, 12 Feb. 2018; fin. 
+# Pirkko Suihkonen (Copyright), 12 Feb. 2018; fin. 
 #
 # Periphrastic mood and tense forms in Finnish in which the verb 
 # "olla" (the infinitive orm) and its inflected forms are operators:

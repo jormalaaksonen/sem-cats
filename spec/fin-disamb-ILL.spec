@@ -1,5 +1,5 @@
-#Pirkko Suihkonen, 2015 and 2017
-#Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2015 and 2017
+#
 #
 # Kommentteja ensin:
 #  1) tama on vasta kokeilu, jolla testataan INCLUDE:n toimintaa fin.spec:ssa

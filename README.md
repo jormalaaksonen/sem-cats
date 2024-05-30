@@ -20,15 +20,17 @@ Parallel Database. LINCOM Studies in Theoretical Linguistics. ISBN
 `data` - The used data.
 
 
-## 2 examples
+## 2 data
 
-For all examples, do first:
+## 3 example runs
+
+For all example runs, do first:
 
 ```
 cd script
 ```
 
-### 2.1 setup verification
+### 3.1 setup verification
 
 ```
 ./kwic -verify
@@ -49,16 +51,16 @@ Verifying <../spec/eng.spec><br>
 Verify ending<br>
 </blockquote>
 
-### 2.2 other runs
+### 3.2 other runs
 
 *TBW*
 
 
-## 3 contacts
+## 4 contacts
 
 Jorma Laaksonen <<jorma.laaksonen@aalto.fi>>
 
-## 4 copyright
+## 5 copyright
 
 © 2006–2024 Pirkko Suihkonen & Jorma Laaksonen
 

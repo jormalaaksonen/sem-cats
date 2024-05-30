@@ -1,5 +1,5 @@
-#Pirkko Suihkonen, 2016 and 2018
-#Copyright: Pirkko Suihkonen
+#Pirkko Suihkonen (Copyright), 2016 and 2018
+#
 #
 # The task of this file is to disambiguate verb forms, which are
 # homonymous with other classes of parts of speech: tule+n (come+1SG) 

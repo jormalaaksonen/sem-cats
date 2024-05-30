@@ -1,12 +1,13 @@
-# Pirkko Suihkonen, May 2, 2018 (copyright).
+# Pirkko Suihkonen, May 2, 2018.
+# Copyright: Pirkko Suihkonen
 #
-#The lexical category "preposition" in English is homonymous in the way 
-#that most of the words which are listed as preposition also belong to several 
+# The lexical category "preposition" in English is homonymous in the way 
+# that most of the words which are listed as preposition also belong to several 
 # other lexical categories. The file is a subsection of the file 
 # "eng-disamb-PRP-TRNS-EXCL.spec" which consists of words which
 # are homonymous with prepositions, but which are, according to information 
-# based on the context, are are particles which are modifiers of verbs or 
-# clauses, or they represent some other lexical category. The words which 
+# based on the context, also particles which are modifiers of verbs
+# or they represent some other lexical category. The words which 
 # are connected with a small contexts are collected from a kwic concordance 
 # consisting of the occurrences of the words collected from running texts 
 # which contains the English translation of the Bible. The following words 
@@ -15,9 +16,9 @@
 # down, in, near, nigh, on, out, over, under, and up. 
 # The file is a preliminary work prepared for testing of disambiguation 
 # of lexical categories of words occurring as prepositions in English. 
-# The list is not proofread yet, and there are some occurrences which have 
-# to be evaluated with larger contexts. The other ambiguous prepositions 
-# have to be included in the file later (cf. the text, Table 16). 
+# There are some occurrences which have to be evaluated with larger contexts.
+# The other ambiguous prepositions have to be exmined later.
+# (
 #
 # by
 TRNS-EXCL: ^(((he|i|jesus|king|lord|men|multitude|nazareth|so|

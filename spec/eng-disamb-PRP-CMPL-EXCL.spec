@@ -34,7 +34,7 @@ PRP-CMPL-EXCL: ^((in the eye of)|
   (in the bottom)|
   (in the middle)|
   (in the midst)|
-  (in the center)|
+  (in the centre)|
   (in the middle of)|
   (in the midst of)|
   (at the bottom)|
@@ -66,7 +66,7 @@ PRP-CMPL-EXCL: ^((in the eye of)|
   (from out of)|
   (from (the) middle of)|
   (from (the) midst of)|
-  (from (the) center of)|
+  (from (the) centre of)|
   (from (the) out of)|
   (off the midst (of))|
   (out the middle (of))|
@@ -108,7 +108,7 @@ PRP-CMPL-EXCL: ^((in the eye of)|
   (into among)|
   (into amongst)|
   (into midst)|
-  (into (the) center)|
+  (into (the) centre)|
   (to (the) middle)|
   (into (the) middle)|
   (into midst)|
@@ -132,7 +132,7 @@ PRP-CMPL-EXCL: ^((in the eye of)|
   (to the mouth of)|
   (to amid)|
   (to between)|
-  (to (the) center)|
+  (to (the) centre)|
   (to the midst of)|
   (to the mouth of)|
   (unto the midst of)|

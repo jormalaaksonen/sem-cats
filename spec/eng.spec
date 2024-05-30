@@ -1,142 +1,119 @@
-#Pirkko Suihkonen, 2006-2008, 2014, 2016-2017 
-#Copyright: Pirkko Suihkonen 
+# Pirkko Suihkonen, 2006-2008, 2014, 2016-2017.
+# Final version of the text describing the rules: 2024.
+# Copyright: Pirkko Suihkonen 
+# The Perl scripts for the analysis of the database and comments on 
+# the guidelines of Regular Expressions: Jorma Laaksonen.
 #
-#The name of the language: English 
-#The family: Indo-European languages 
-#The sub-branch: Germanic languages 
-#Code: eng 
+# The name of the language: English 
+# The family: Indo-European languages 
+# The sub-branch: Germanic languages 
+# Language code, ISO 639: eng 
 #
 # The name of the project: 
 # The ADPOS-CASE categories in English and Finnish. 
 # The main goal of the project: 
-# Comparative research of the English and Finnish ADPOS-CASE relators
-# (final version: 2017). 
-# Grammatical rules are defined as Regular Expressions. 
-# The Perl scripts for the analysis of the database, and comments on 
-# the guidelines of Regular Expressions: Jorma Laaksonen.
+# Parallel research of the English and Finnish ADPOS-CASE relators.
 #
-# References: 
+# Data: The King James Bible.
+# https://www.biblegateway.com/versions/Kig-James-Version-KJV-Bible/#booklist.
+# (April 2024)
+# http://www.kingjamesbibleonline.org/ (Feb. 2015)
+#
+# Grammatical rules are defined as Regular Expressions. 
+# The focus of the rules is on the ADPOS-CASE relators
+# (prepositions in English and adpositions and case marking in Finnish)
+# and their occurrences in the text.
+# The rules do not deal with the first and second arguments.
+#
+#
+#
+# LITERATURE ON THE BACKGROUND OF THE PROJECT (examples):
+#
+# Hakulinen, Auli and Fred Karlsson. 1979. Nykysuomen lauseoppia
+# (Syntax of the Modern Finnish)
+# [Suomalaisen Kirjallisuuden Seuran Toimituksia (SKST) 350].
+# Helsinki: Suomalaisen Kirjallisuuden Seura.
+#
+# Hakulinen, Lauri. 1968. Suomen kielen rakenne ja kehitys
+# (The Structure and Development of the Finnish Language).
+# Helsinki: Kustannusosakeyhtiö Otava.
+#
+# Iivonen, Antti, Mari Horppila, Miika Heikkonen and Olli Rissanen (eds).
+# 2000. Fonetiikan perussanasto. Helsingin yliopisto.
+# https://helda.helsinki.fi/bistream/handle(10224/3513/index.htm. (2016)
+#
+# Karlsson, Fred. 1983[1982]. Suomen kielen äänne- ja muotorakenne
+# (Phonological and Morphological Structure of the Finnish Language.)
+# Porvoo/Helsinki/Juva: Werner Söderström Osakeyhtiö.
+#
+# Karlsson, Fred. 1987. Finnish Grammar. 
+# Porvoo/Helsinki/Juva: Werner Söderström Osakeyhtiö.
+#
+# Koskenniemi, Kimmo. 1983. Two-Level Morphology: A General Computational Model
+# for Word-Form Recognition and Production [Publications, 11].
+# University of Helsinki, Department of General Linguistics.
+#
+# Koskenniemi, Kimmo. 1990. Finite-State parsing and disambiguation.
+# In Hans Karlgren (ed.). Coling-90. Papers Presented in the 13th International
+# Conference on Computational Linguistics on the Occasion of the 25th
+# Anniversary of COLING and the 350th Anniversary of Helsinki University, 2.
+# 229-242. Helsinki: Yliopistopaino.
+#
+# Laaksonen, Kaino and Anneli Lieko. 1998. Suomen kielen äänne- ja muoto-oppi
+# (Phonetics and Morphology of the Finnish Language).
+# Helsinki: Oy Finn Lectura Ab.
+#
+# Penttilä, Aarni. 1963. Suomen kielioppi (The Finnish Grammar).
+# Porvoo|Helsinki: Werner Söderström Osakeyhtiö.
+#
 # Quirk, Randolph & Sidney Greenbaum, 1996[1973]. 
 # A University Grammar of English. 
 # Edinburg/Essex: Addison Wesley Longman Limited.
-# Webster's Ninth New Collegiate Dictionary. A Merriam-Webstr.
-# Merriam-Webster Inc., Publishers. Springfield, Massachsetts, U.S.A.
-# On the references: see also the document Suihkonen & Laaksonen 2017
+#
+# Tuomi, Tuomo (ed.). 1980. Suomen kielen käänteissanakirja
+# (Reverse Dictionary of Modern Standard Finnish)
+# [Suomalaisen Kirjallisuuden Seuran Toimituksia, 274].
+# Helsinki: The Finnish Literature Society.
+#
+# Webster's Ninth New Collegiate Dictionary. 1989.
+# Springfield, Massachusetts, U.S.A.: Merriam-Webster Inc., Publishers.
+#
+# Webster's Dictionary 1828 (http://www.webstersdictionary1828.com/). (Aug. 2023)  
+#
+# For more information on the project, cf.
+# Suihkonen, Pirkko and Jorma Laaksonen. 2024. Syntax and Semantics of
+# Adpositions and Case Marking: Descriptions of Prepositions in English and
+# Adpositions and Case Marking in Finnish within the Framework of a Parallel
+# Database [Lincom Studies in Theoretical Linguistics, 69]. Muenchen: LINCOM GmbH.
 #
 # 
+#
 # THE RULES FOR THE ANALYSIS OF THE DATABASE
 #
-# (The LENCA-project <<<<<<8Suihkonen 2015):
-# DIATHESIS:       ACT & PASS & REFL & REC & CAUS & APPL & ANAL
-# MOOD:            IND & IMP & POT & COND & SUBJ & INT-ANA & OBL-ANA
-# TENSE:           PRES-SNTH & PAST-SNTH & FUT-ANA & PERF & PLU-PERF
-# ASPECT:          IMPRF & PERF & PRG-ANA & HAB-ANA & PNCT-ANA & SEMF-ANA \
-#                 & INGR-ANA & TRM-ANA & CONT
+# I. PHONOLOGY
 #
+# 1. The sound systems
 #
-# A. Grammar
-# Phonology
-#1. The sound system
+# 1.1. Consonants and sequences of consonants in the text
+# (cf. Webster 1989[1983]: 37-39): 
 #
-#1.1. Consonants and consonant combinations in the texts: 
 C: (b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|w|x|z)
 CC: (ng|sh|zh|th)
-# th is used to mark voiced and unvoiced dental fricative, 
-# ng is the palatar nasal,
-# sh is voiceless palatoalveolar fricative, and 
-# zh voiced palatoalveolar frictive.
 #
-#1.2. Vowels in the texts:
+# 1.2. Vowels and sequences of vowels in the texts:
+#
 V: (a|e|i|o|u|y)
 VL: (aa|ee|oo|uu)
 DIPH: (ai|ae|ao|au|ay|ea|ei|eo|eu|ey|ia|ie|io|oa|oe|oi|ou|oy|ua|ue|ui|uy)
 TRIPH: (aou|aye|eau|eye|ieu|oeu|uoy)
 V-APP: (aw|ew|ow)
 #
-# Pronunciation: vowels, consonants, and combinations of sounds forming 
-# phonologically distinctive sounds in pronouncing: 
-#
-# Central, closed, mid V (V = e upside-down): 
-#  (a|ei|o|u|y|ah|ai|ea|ei|eo|ia|io|oa|oe|oi|ou|ow|ue|eau|
-# Central, closed, mid V (V = e upside-down), the first syllable stressed:  
-#  a|o|u|y|oe|oo|ou|
-# Central, closed,  mid  V + r (V = e upside-down), second SYLL: 
-#  ar|er|ir|or|re|ur|yr|eur|our|
-# Central, closed, mid V + r (V = e upside-down), main stress, first SYLL: 
-#       er|ir|or|ur|yr|ear|err|eur|irr|our|urr|yrrh|
-# \a\: a|e|i|ae|ai|au|ay|ea|ei|
-# \aa\ (<a> combined with a line above): a|e|ae|ai|ao|au|ay|ea|ee|ei|ey|ie|ui|
-# \ä\: a|e|i|o|aa|ah|au|ea|ou|eau|
-# Closed a (a with a dot above): a|ar|au|aar|
-# a combined with closed u (u with a dot above): au|ou|ow|aou|
-# \e\: a|e|i|u|ae|ai|ay|ea|ei|eo|ie|oe|ieu|
-# \ee\ (e combined with a line above): e|i|y|ae|ay|ea|ee|ei|eo|ey|ie|oe|
-# \i\: a |e|i|i|u|y|ea|ee|ei|ia|ie|ui|
-# \ii\ (i combined with a line above): i|y|ai|ay|ei|ey|ie|oy|uy|aye|eye|
-# \oo\: a|o|ao|au|eo|ew|oa|oe|oh|oo|ou|ow|ua|eau|
-# Closed o (o combined with a dot above): a|o|ah|au|aw|eo|oa|ou|ow|
-# Closed o (o combined with a dot above) and i: aw|eu|oi|oy|uoy|
-# ü: o|u|w|eu|ew|oe|oo|ou|ue|ui|eew|ieu|oeu)
-# Closed u (u combined with a dot above): o|u|oo|ou)
-#
-# Webster 1989[1983]: 37-39:
-# Consonants: 
-# \b\: |v|bb|bh|pb| 
-# \ch\: c|ch|cz|si|te|teh| 
-
-# \d\: d|dd|dh|ed|ld|
-# \f\: f|ff|gh|lf|ph|
-# \g\: g|gg|gh|gu|
-# \h\: g|h|j|ch|wh|
-# \hw\: ju|wh|
-# \j\: g|j|ch|dg|di|dj|gg|gi|jj|
-# \k\:  c|k|q|cc|ch|ck|cq|cu|gh|kh|kk|lk|qu|cch|cqu|
-# \kk (k underlined): h|ch|gh| 
-# \l\: l|ll|lh|ln| 
-# l preceding overshort o: l|al|el|le|yl| 
-# \m\: m|gm|lm|mb|mh|mm|mn|chm|
-# m preceding overshort o: en|ain|ernm|
-# \n\: n|gn|kn|mn|mp|nn|pn|
-# n preceding overshort o: en|on|ain|
-# palatal nasal: n|nd|ng|ngg|ngu|
-# \p\: p|ph|pp|
-# \r\: r|rhrr|wr|rrh|
-# \s\: c|s|z|ch|ci|ps|sc|ss|ts|t<|sch|sth|
-# \sh\: c|s|ch|ci|sc|se|sh|si|sk|ss|ti|cgi|psh|sch|sci|ssi|chsi|
-# \t\: t|bt|ct|et|ed|pt|th|tt|cht|ght|phth| 
-# \th\: gh|th|ght|chth|phth|
-# long th = th underlined: dd|dh|th|
-# \v\: f|v|w|ph|vv|
-# \w\: u|w|ju|ou|wh|
-# \y\: i|j|y|
-# \z\: s|z|x|cz|ss|ts|tz|zz|
-# \zh\: g|j|si<zi|ssi)
-# 
 #
 # 2. The structures of syllables
 #
 # Examples from the syllabic structures below deal only with literary forms 
-# of words. These structures reflect only weakly the syllabic structure
-# of words in spoken language. Affixation changes the syllabic structure.
-# Syllabication of spoken language has to be specified separately.
+# of words:
 # 
-# Literal syllables, examples:
-# i:    an-i-mal:       SYLL-V: \w(V)
-# ei:   ei-gen-vec-tor: SYLL-VV: \w(V()V)
-# be:   be-gin:         SYLL-CV: \w(C()V)
-# day;  day-room:       SYLL-CVV: \w(C()V()V)
-# gle:  an-gle:         SYLL-CCV: \w(C()C()V)
-# free: free-dom:       SYLL-CCVV: \w(C()C()V()V)
-#
-# al:   fed-er-al:      SYLL-VC: \w(V()C)
-# iar:  fa-mil-iar:     SYLL-VVC: \w(V()V()C)
-# gen:  gen-er-al:      SYLL-CVC: \w(C()V()C)
-# noon: noon:           SYLL-CVVC: \w(C()V()V()C)
-# ea:   beat:           SYLL-CVVC: \w(C()V()V()C)
-# gest: big-gest:       SYLL-CVCC: \w(C()V()C()C)
-# thin: thin:           SYLL-CCVC: \w(C()C()V()C)
-# grand: grand-mother:  SYLL-CCVCC: \w(C()C()V()C()C) 
-#
 SYLL-V: \w(V)
 SYLL-VV: \w(VL|DIPH)
 SYLL-CV: \w(C()V)
@@ -156,148 +133,79 @@ SYLL-CL: \w(SYLL-VC|SYLL-VVC|SYLL-VCC|SYLL-CVC|SYLL-CVVC|SYLL-CVCC|SYLL-CCVCC)
 SYLL: \w(SYLL-OP|SYLL-CL)
 #
 #
-# 3. The stress on the word-level (the principal stress rules)
-# 
-# 3.1. The principal stress on the root syllable (native words, 
-# old words borrowed from French; 'king, 'kingly);
-# W-STRESS-PF:  
-# 3.2. The principal stress is on the penultimate syllable in words 
-# in which the basic forms consist of three or more syllables: 
-# photogra'phy, telegraph'ic (see above):
-# W-STRESS-AP:
-# 2.3. The principal stress is on the antepenultimate syllable 
-# in the words borrowed from classical languages: tele'graphy, 
-# W-STRESS-AP: 
-# 3.4. The principal stress is on the syllable preceding the ending -ion:
-# argumen'tation and adjectival ending -ic: pho'nemic.
-# W-STRESS-D: 
-# 3.5. The principal stress on the antepenultimate syllable in the words
-# The principal stress is on the antepenultimate syllable in the words
-# which have the adjectival ending -ian: 'library - libra'rian.
-# W-STRESS-E: 
-# 3.6. The principal stress is on the first member of compounds: 'black''bird:
-# W-STRESS-F: 
-# 3.7. The position of the principal stress on the homonymous words:
-# The position of the principal stress separates the homonymous words which 
-# lexically belong to verbs and nouns: N: 'contrast, V: cont'rast,
-# N: 'present, V: pre'sent.
-# W-STRESS-G: 
-# 2.8. Secondary stress 
-# The secondary stress (compounds, the second member: 'black''bird):
-# W-STRESS-H:
-# SYLL-UNSTRSS: (SYLL()(C)()(C)()V()(C) 
-#
-# Stress rules. ‘= principal stress, “= secondary stress (PF=the first syllable, AP=the 
-# principal stress on the fourth syllable);
-# V-UNSTR = unstressed vowel;
-# STRSS-P = the principal stress on the root syllable;
-# STRSS-S = the secondary stress on the third/pairless syllables; 
-# STRSS-PS = a stressed syllable;
-# STRSS-NS = a non-stressed syllable;
-# the second and the fourth syllable are unstressed;
-# STRSS-NS-D = an unstressed syllable containing a diphthong;
-# STRSS-NS-V = an unstressed syllable containing a short or long vowel; 
-# In addition to the basic rules (rules 1 and 2), 
-# the stress rules have some varieties.
-#
-STRSS-PF: \w((SYLL|SYLL()SYLL))
-STRSS-AP: \w(SYLL()SYLL()SYLL()SYLL)
-STRSS-S: \w(SYLL()SYLL()SYLL)
-STRSS-NS: \w((SYLL()SYLL)|(SYLL()SYLL()SYLL()SYLL)|
-  (SYLL()SYLL()SYLL()SYLL()SYLL()SYLL))
-STRSS-PS: \w((SYLL)|(SYLL()SYLL()SYLL))
-#
-STRSS: \w(STRSS-PF|STRSS-AP|STRSS-S|STRSS-NS|STRSS-PS)
+# 3. The stress on the word-level
+#  (The stress rules of English are not included.)
 #
 #
-# B. Lexicon and morphology
-# I. Word stems
-# 1. Stem types of nouns
-# 
-# There are changes in the ends of the stems of nouns in the case, when the 
-# plural endings -s and -es are combined with the ends of words. 
-#
-# A distinctive property of nouns in English is that many of them are 
-# homonymous with verbs. The nominal and verbal functions of these words 
-# is separated with the stress relationships. 
-#To be continued ...
-#
-# 2. Stem types of verbs
-# 
-# In verbal morphology, there are changes in some verb stems, when the 
-# participle forms -ing (PCPL-) and -ed (PCPL-II and the PAST tense suffix) 
-# are combined with them. The same changes take place, when the ancient 
-# personal endings -th (3SG) and -st (2SG) are combined with certain verb 
-# stems. The rules for describing the variation of stems are 
-# presented in describing the combinations of verbs and participle and 
-# past tense suffixes and personal marking.
-
-# VERB-STEM: +th
-# VERB-STEM: +e+th
-# VERB-STEM: -y+th => -ie+th
-# VERB-STEM: -VC+th => -VCC+th
-#
-#VERB-STEM: -y+e+st => ie+st
-#VERB-STEM: -d+st
-#VERB-STEM: -C+est => CC+est
-#VERB-STEM: -V+d+st
-#VERB-STEM: -C+ed+st 
-#Verbs, R+st
-#Verbs, R+e+st 
+# II. MORPHOLOGY AND LEXICON
 #
 #
-# II. Nominal morphology
+# 1. Classes of parts of speech
 #
-# Classes of parts of speech
+# 1.1. Nouns (not included)
 #
-# Nouns
+# 1.2. Adjectives (not included)
 #
-# 1. Number
+# 1.2.1. Absolute adjectives
 #
-# Singular is unmarked
+# 1.2.2. Relative adjectives:
 #
-# Plural: 
-# (a) the plural is marked with the suffix -s. and after aveolar and
-# post-alveolar fricatives (s, z, sh, zh) the plural suffix s is combined
-# with -e: = > -es.
-# (b) The vowel-e (dummy e) disappears before the suffix -es. 
-# (c) The words having the word-final -o (e.g. potato) are combined with
-# the plural ending -es: potatoes.
-# (d) In the unstressed position, the word-final -y is changed to -ie:
-# family => families, but boy, boyes. 
-# (e) A great number of plural forms are lexicalized in English.
 #
-PL-I: \w(s)
-PL-II: \w((s|z|sh|zh)es)
-PL-III: \w((oe|ie)s)
-PL: (PL-I|PL-II|PL-III)
+# 1.3. Pronouns (lists; not included)
 #
-# To be continued
 #
-# Adjectives
+# 1.4. Numerals (lists; not included)
 #
-# Pronouns
+# 1.4.1. Cardinal numerals
 #
-# Conjunctions:
+# 1.4.2. Ordinal numerals
 #
-# 2. Possession marking
+# 1.4.3. Fractions
 #
-# In English, possession is marked with the genitive forms of personal 
-# and interrogative pronouns.
 #
-#Possessive pronouns: (my|your|his|her|our|their|yours|ours|theirs)
-#Genitive: 1) -'s and of
+# 1.5. Verbs (cf. section IV)
 #
-# 1.3. Structural means for developing and modifying lexicon
 #
-# 1.3.1. Prefixes in word formation
+# 1.6. Particles (lists; not included)
+#
+# 1.6.1. Particles in the lexicon
+#
+# 1.6.2. Clitic particles
+#
+#
+# 1.7. Conjunctions (lists; not included)
+#
+# 1.7.1. Coordinating conjunctions (a list)
+#
+# 1.7.2. Subordinating conjunctions (a list)
+#
+#
+# 1.8. Articles
+#
+# 1.8.1. Indefinite articles: a, an
+#
+# 1.8.2. Definite articles: the
+#
+#
+# 2. Word formation: examples from the structural means for developing
+#    and modifying lexicon 
+#
+# 2.1. Word stems (not included)
+#
+# 2.1.1. Stem types of nouns
+#
+# 2.1.2. Stem types of verbs 
+#
+#
+# 2.2. Prefixes in word formation, examples:
+#
 # Negative prefixes:
 PREF-NEG: (un|non|dis|in)
 # Reversative and privative prefixes:
 PREF-RP: (un|de|dis)
 # Pejorative prefixes:
 PREF-PEJ: (mis|mal|pseudo)
-# Prefixs of degree or size:
+# Prefixes of degree or size:
 PREF-DS: (arch|super|out|sur|sub|over|under|hyper|ultra|mini)
 # Prefixes of attitude:
 PREF-ATT: (co|counter|anti|pro)
@@ -314,57 +222,44 @@ PREF-CNV: (be|en|a)
 PREF: (PREF-NEG|PREF-RP|PREF-PEJ|PREF-DS|PREF-ATT|PREF-LOC|PREF-TO|
   PREF-NB|PREF-OT|PREF-CNV)
 #
-# 3.2. Particles as modifiers in word formation
-# To be continued...
 #
-# 3.2.1. Particles in modifying nouns
-# To be continued...
+# 2.3. Particles modifying verbs:
 #
-#Particles or phrases corresponding some clitic particles in Finnish:
-#
-CLT-W: (also|too|even|(not even)|weather|why|(is it)|(if only))
+# (cf. the WordNet verb list and 
+# the files dealing with disambiguation of English)
 #
 #
-# 3.2.2. Particles in modifying verbs
-# To be continued...
-#
-# Here: take into account the particles from the WordNet verb list.
-#
-#
-# 4. Case marking
-#
-# In addition to the dictionary form (basic form), English has only one 
-# formally marked case: genitive. The use of prepositions forms the  
-# principal structural method in adjusting words in the contexts in English.
-# On the prepositional system of English, c.f. ADPOS-CASE relators. 
-#  
-# To be continued.
-#  
-# 4.1. Nominative/absolutive
-#
-# The unmarked dictionary form is the basic form of nomnals.
-# Nominative/absolutive (the dictionary form) is distinguished in the
-# singular and plural forms. 
-#
-# 4.2. Genitive
-#
-# The rule GEN only distinguish the genitive forms.  The rule does not
-# contain restrictors needed for generating the plural forms.
-#
-GEN: \w(((s|z|ch|sh|dz)es)|((se|ze)es)|of)
-#
-#
-#Noun phrase (NP), English
-#PRP + N
-#PRP + A + N
-#PRP + PRON-POSS + A + N
-#PRP + (PRON-POSS +) (A +) N
-#PRP + (PRON-DEM +) (PRON-DET +) (PRON-POSS +) (A +) N
-#
-# III. Inflection of verbs
+# III. NOMINAL MORPHOLOGY
 # 
-# 1. The verbs dealt with the project
 #
+# 1. Number
+#
+# 1.1. Singular
+# Singular is unmarked.
+#
+# 1.2. Plural (the rules are not included)
+#
+#
+# 2. Possession marking
+#
+# In English, possession is marked with possessive pronouns (cf. II: 4.2.)
+# and with the genitive case.
+#
+#
+# 3. The case system
+#
+# 3.1. Nominative
+#
+# The nominative form is unmarked. 
+#
+# 3.2. Genitive (not included)
+#
+#  
+# IV. INFLECTION OF VERBS 
+# 
+# 1. The verbs examined on the project
+#
+# The data collected from verbs contains the following subgroups:
 # (a) The collection of verbs in the database: the list of verbs: 
 # eng-verbs-database-may-2017.txt. 
 # In the list, the dictionary forms are marked with the character "#".
@@ -373,6 +268,10 @@ GEN: \w(((s|z|ch|sh|dz)es)|((se|ze)es)|of)
 # eng-irregular-verbs-cats-txt.txt. Different tense forms are separated from 
 # the list of irregular verbs: IRREG-PRES, IRREG-PAST, IRREG-PERF-I, 
 # and IRREG-PERF-II.
+#
+# The verbs in the database are introduced from the file
+# eng-verbs-database-may-2017-txt to the kwic-file for processing
+# operations with the help of the file INCLUDELIST.
 #
 INCLUDELIST: eng-verbs.txt VERB-LIST
 INCLUDELIST: eng-verbs-basic.txt VERBS-BASIC
@@ -387,12 +286,12 @@ INCLUDELIST: eng-verbs-som-april-2018.txt VERBS-SOM-LONG
 INCLUDELIST: eng-verbs-som-loc.txt VERB-SOM-LOC
 INCLUDELIST: eng-verbs-som-ad-loc.txt VERB-SOM-AD-LOC
 #
-#INCLUDELIST: eng-verbs-test-be.txt VERB-TEST-BE
-#INCLUDELIST: eng-verbs-test-bring.txt VERB-TEST-BRING
-#INCLUDELIST: eng-verbs-test-come.txt VERB-TEST-COME
-#INCLUDELIST: eng-verbs-test-flow.txt VERB-TEST-FLOW
-#INCLUDELIST: eng-verbs-test-go.txt VERB-TEST-GO
-#INCLUDELIST: eng-verbs-test-take.txt VERB-TEST-TAKE
+INCLUDELIST: eng-verbs-test-be.txt VERB-TEST-BE
+INCLUDELIST: eng-verbs-test-bring.txt VERB-TEST-BRING
+INCLUDELIST: eng-verbs-test-come.txt VERB-TEST-COME
+INCLUDELIST: eng-verbs-test-flow.txt VERB-TEST-FLOW
+INCLUDELIST: eng-verbs-test-go.txt VERB-TEST-GO
+INCLUDELIST: eng-verbs-test-take.txt VERB-TEST-TAKE
 #
 INCLUDELIST: eng-verbs-som.txt VERB-TEST-@ 
 #
@@ -402,100 +301,52 @@ INCLUDELIST: eng-verbs-som-ad-loc.txt VERBS-SOM-AD-LOC
 INCLUDE: ENG-INF.spec
 INCLUDE: ENG-VERBS-FINITE-TEST.spec
 #
-#INCLUDE: eng-disamb-AD-IN-EXCL.spec
-#INCLUDE: eng-disamb-AD-ON-EXCL.spec
-#INCLUDE: eng-disamb-AD-OUT-EXCL.spec
-#INCLUDE: eng-disamb-DE-IN-EXCL.spec
-#INCLUDE: eng-disamb-DE-ON-EXCL.spec
-#INCLUDE: eng-disamb-DE-OUT-EXCL.spec
 #
-# Eliminating prepositions which modify verbs:
+# Eliminating the particles which modify verbs:
 #
 INCLUDE: eng-complex-verbs-EXCL.spec
 #
 #
 # 2. Verbal nominal forms
-# 2.1. Infinitive (INF)
+#
+# 2.1. Infinitive (INF):
 # 
-# The rules on verbal morphology (WN-etc.) in the Perl-script: /script/kwic:
-# ACT, INF = WN-VERB = dictionary forms of verbs in WordNet. The following 
-# rule moves the set of the dictionary forms of verbs to the category 
-# infinitive (INF). 
-#
-# The infinitive forms of verbs are marked with the particle "to" 
-# which precedes the dictionary forms of verbs: sing, go, etc. 
-# The particle "to" before the verbs is distinguished from the database 
-# with the disambiguation rule given in the file "eng-disamb-AD-ON.spec".
+# The infinitive forms of verbs are combined with the particle "to" 
+# which precedes the dictionary forms of verbs. 
+# The rule ENG-INF.spec moves the set of the dictionary forms of verbs
+# to the category infinitive (INF). 
 #
 #
-# 2.2. Participles: present participle (PCPL-I) and past participle (PCPL-II)
+# 2.2. Participles: present participle (PCPL-I) and past participle (PCPL-II):
 #
-# The PCPL-I is formed with the suffix -ing and the PCPL-II is formed with the suffix -ed.
-# The PCPL-II suffix is identical with the past tense marker.
-# In the regular forms, the suffixes are combined with the word stem without changing the
-# roots. In some verbs, adjusting the suffixes in the word stems are gone by causing
-# some changes in the ends of the word stems. 
+# The PCPL-I is formed with the suffix -ing and the PCPL-II is formed
+# with the suffix -ed.
 #
-# When endings -ing and –ed are combined with the stems of verbs which ends with consonants 
-# and the vowels -a, -i, -o, -u, y, the combinations do not cause any changes in the verb stems. 
-# The rules of changes in combinations of participle suffixes and verb stems:
-# (a) Deletion of -e: -e => zero: the word-final -e is dropped before the endings -ing and -ed.
-# Exceptions: the final -e is not dropped before the ending -ing and -ed in the following 
-# environments: -ee, -ye, -oe, and -ge: agree - agreed, dye - dyed, hoe - hoed, signe -signed.
-# (b) The verbs ending with -y, -Cy => Ci
-# (c) Doubling of consonants: 
-# Final consonants (except x) are doubled in the case, when a morphological ending begins
-#  with a vowel and when the preceding vowel is stressed and spelled with a single letter: 
-# bar - barring - barred, permit - permitting - permitted.
-# There is no doubling, when the preceding vowel is unstressed, or it is written with two letters: 
-# enter - entered, dread - dreaded, visit - visited, stoop - stooped, de`velop - de`veloped.
-# Doubling of consonants, exceptions: -g => -gg-, -c => -ck-
-# (the combination -ck- denotes orthographically long consonants which with other consonants
-# is marked with double consonants): humbug - humbuggin, trafic - traficked. 
-# (In the British English the rule concerns also the following consonants -l, -m, and -p: -l => 
-# -ll, -m => -mm, -p => -pp; with the consonant -p, also the structure without doupling exists)   
-# (not x and the approximants w and j).)
-# 
-#VERB-DBL:  \w(V()C()C(ed|ing))
-#
-#PCPL-I: (((d|t)|((V-UNSTRSS(gg|ck))|
-#  (c|f|h|k|p|q|s)| (bb|cc|dd|ff|gg|hh|kk|ll|mm|nn|pp|qq|rr|ss|tt|zz)|
-#  (C(V-UNSTRSS|V()V)C))ing)
-#
-#PCPL-II: ((dde|tte)d)|
-#  ((V-UNSTRSS(gg|ck))|
-#  (c|f|h|k|p|q|s)|
-#  (bb|cc|dd|ff|gg|hh|kk|ll|mm|nn|pp|qq|rr|ss|tt|zz)|
-#  (C(V-UNSTRSS|VV)C)ed)
-#
-# The participle-rules are in the kwic-skript.
 PCPL-I: (VERBS-PCPL-PRES)
 PCPL-II: (VERBS-PCPL-PAST)
 PCPL: (PCPL-I|PCPL-II)
 #
 #
-# 2.3. Personal inflection
+# 3. Personal inflection
 #
-# In the modern standard English, only the third person in the singular form (3SG) is marked 
-# (-s) in personal inflection. In the database consisting of a translation of the Bible, the third 
-# person in the singular in the present tense is marked with the suffix -th, and the second person 
-# in the present and the past tense forms is marked with the suffix -st. 
+# In the modern standard English, only the third person in the singular form (3SG)
+# is marked in personal inflection (the suffix -s). 
 #
-# On the ancient personal endings:
-# (a) The third singular personal ending: 3SG:
-# In the data, the ending -th in the ends of words is located after -e: > (e)th. 
-# This third singular ending is found also after the past tense ending -ed (see below).  
-#
-# Homonymous words in the database are eliminatd with the disambiguation rules
-# in the file "eng-disamb-PERS.spec".
-#
+# On the old personal endings:
+# In the database consisting of an old translation of the Bible, 
+# the third person in the present tense singular form 
+# is marked with the suffix -th, and the second person in the present 
+# and the past tense forms is marked with the suffix -st.
+#   
 # The rules marking the personal endings of verbs of the 2nd and 3rd persons 
 # are in the kwic-script.
+#
+# The rules VERBS-2SG, SG2, V-3SG and SG3 are not activated.
 #
 V-1SG: (VERBS-BASIC)
 #VERBS-2SG: (((b|c|d|f|g|h|j|k|l|m|n|p|r|s|t|w|x|z(e)?)st)|(VERBS-BASIC))
 #SG2: (ENG-VERBS-2SG)
-#V-3SG: (((b|c|d|f|g|h|j|k|l|m|n|p|r|s|t|w|x|z(e)?))(th|s))
+#VERBS-3SG: (((b|c|d|f|g|h|j|k|l|m|n|p|r|s|t|w|x|z(e)?))(th|s))
 #SG3: (ENG-VERBS-3SG|VERBS-PRES-3SG)
 V-1PL: (VERBS-BASIC)
 V-2PL: (VERBS-BASIC)
@@ -503,9 +354,10 @@ V-3PL: (VERBS-BASIC)
 VERB-PERS: (V-1SG|VERBS-2SG|VERBS-3SG|VERBS-3SG|V-1PL|V-2PL|V-3PL)
 # 
 #
-# 2.4. Auxiliaries
+# 4. Auxiliaries
 #
-# The basic forms of auxiliaries:
+# 4.1. Auxiliaries in the text:
+#
 VERB-AUX: (be|am|are|is|was|wast|were|wert|been|being|
   have|had|hadst|has|hast|hath|having|
   do|doeth|did|diddest|didst|doing|done|
@@ -521,13 +373,13 @@ VERB-MOD: (can|cannot|could|couldest|
   must|(ought to)|(oughtest to))
 #
 #
-# 2.4.1. Personal inflection of the non-modal auxiliaries 
+# 4.2. Personal inflection of the auxiliaries be, do, and have
+# (standard English), not activated:
 #
-# The auxiliary verbs "be", "have" and "do" are neutral, and the other 
-# auxiliary verb forms also are modal. The auxiliary verbs "shall" and 
-# "will" are also used in forming complex tense forms.
+# The auxiliary verbs "shall" and "will" which are modal verbs
+# are also used in forming complex tense forms.
 #
-#ACT, PRES, the verb "be":	
+# ACT, PRES, the verb "be":	
 ACT-BE-PRES-1SG: (am)
 ACT-BE-PRES-2SG: (are)
 ACT-BE-PRES-3SG: (is)
@@ -537,7 +389,7 @@ ACT-BE-PRES-3PL: (are)
 ACT-BE-PRES: (ACT-BE-PRES-1SG|ACT-BE-PRES-2SG|ACT-BE-PRES-3SG|
   ACT-BE-PRES-1PL|ACT-BE-PRES-2PL|ACT-BE-PRES-3PL)
 #
-#ACT, PAST, the verb "be":	
+# ACT, PAST, the verb "be":	
 ACT-BE-PAST-1SG: (was)
 ACT-BE-PAST-2SG: (were)
 ACT-BE-PAST-3SG: (was)
@@ -547,7 +399,7 @@ ACT-BE-PAST-3PL: (were)
 ACT-BE-PAST: (ACT-BE-PAST-1SG|ACT-BE-PAST-2SG|ACT-BE-PAST-3SG|
   ACT-BE-PAST-1PL|ACT-BE-PAST-2PL|ACT-BE-PAST-3PL)
 #
-#ACT, PERF, the verb “be” (e.g. have/has been)
+# ACT, PERF, the verb "be" (e.g. have/has been)
 ACT-BE-PERF-1SG: (have been)
 ACT-BE-PERF-2SG: (have been)
 ACT-BE-PERF-3SG: (has been)
@@ -557,7 +409,7 @@ ACT-BE-PERF-3PL: (have been)
 ACT-BE-PERF: (ACT-BE-PERF-1SG|ACT-BE-PERF-2SG|ACT-BE-PERF-3SG|
   ACT-BE-PERF-1PL|ACT-BE-PERF-2PL|ACT-BE-PERF-3PL)
 #
-#ACT, PLUPERF, the verb “be” (e.g. have/has been)
+# ACT, PLUPERF, the verb "be" (e.g. have/has been)
 ACT-BE-PLUPERF-1SG: (had been)
 ACT-BE-PLUPERF-2SG: (had been)
 ACT-BE-PLUPERF-3SG: (had been)
@@ -579,7 +431,7 @@ ACT-HAVE-PRES: (ACT-HAVE-PRES-1SG|ACT-HAVE-PRES-2SG|
   ACT-HAVE-PRES-3SG|ACT-HAVE-PRES-1PL|ACT-HAVE-PRES-2PL|
   ACT-HAVE-PRES-3PL)
 #
-#ACT, PAST, the verb "have":	
+# ACT, PAST, the verb "have":	
 ACT-HAVE-PAST-1SG: (had)
 ACT-HAVE-PAST-2SG: (had)
 ACT-HAVE-PAST-3SG: (had)
@@ -589,7 +441,8 @@ ACT-HAVE-PAST-3PL: (had)
 ACT-HAVE-PAST: (ACT-HAVE-PAST-1SG|ACT-HAVE-PAST-2SG|ACT-HAVE-PAST-3SG|
   ACT-HAVE-PAST-1PL|ACT-HAVE-PAST-2PL|ACT-HAVE-PAST-3PL)
 #
-# ACT-PERF: the present forms of the verb "have" and the PCPL-II form of the verb "be":	
+# ACT-PERF: the present forms of the verb "have" and the PCPL-II form of
+# the verb "be":	
 ACT-HAVE-PERF-1SG: (have had)
 ACT-HAVE-PERF-2SG: (have had)
 ACT-HAVE-PERF-3SG: (has had)
@@ -599,7 +452,8 @@ ACT-HAVE-PERF-3PL: (have had)
 ACT-HAVE-PERF: (ACT-HAVE-PERF-1SG|ACT-HAVE-PERF-2SG|ACT-HAVE-PERF-3SG|
   ACT-HAVE-PERF-1PL|ACT-HAVE-PERF-2PL|ACT-HAVE-PERF-3PL)
 #
-# ACT, PLU-PERF: the past forms of the verb "have" and the PCPL-II form of the verb "be": 	
+# ACT, PLU-PERF: the past forms of the verb "have" and the PCPL-II form of
+# the verb "be": 	
 ACT-HAVE-PLUPERF-1SG: (had had)
 ACT-HAVE-PLUPERF-2SG: (had had)
 ACT-HAVE-PLUPERF-3SG: (had had)
@@ -620,7 +474,7 @@ ACT-DO-PRES-3PL: (do)
 ACT-DO-PRES: (ACT-DO-PRES-1SG|ACT-DO-PRES-2SG|ACT-DO-PRES-3SG|
   ACT-DO-PRES-1PL|ACT-DO-PRES-2PL|ACT-DO-PRES-3PL)
 #
-#ACT, PAST, the verb "do":	
+# ACT, PAST, the verb "do":	
 ACT-DO-PAST-1SG: (did)
 ACT-DO-PAST-2SG: (did)
 ACT-DO-PAST-3SG: (did)
@@ -630,7 +484,7 @@ ACT-DO-PAST-3PL: (did)
 ACT-DO-PAST: (ACT-DO-PAST-1SG|ACT-DO-PAST-2SG|ACT-DO-PAST-3SG|
   ACT-DO-PAST-1PL|ACT-DO-PAST-2PL|ACT-DO-PAST-3PL)
 #
-#ACT, PERF, the verb “do” (e.g. have/has done)
+# ACT, PERF, the verb "do" (e.g. have/has done)
 ACT-DO-PERF-1SG: (have done)
 ACT-DO-PERF-2SG: (have done)
 ACT-DO-PERF-3SG: (has done)
@@ -640,7 +494,7 @@ ACT-DO-PERF-3PL: (have done)
 ACT-DO-PERF: (ACT-DO-PERF-1SG|ACT-DO-PERF-2SG|ACT-DO-PERF-3SG|
   ACT-DO-PERF-1PL|ACT-DO-PERF-2PL|ACT-DO-PERF-3PL)
 #
-#ACT, PLUPERF, the verb “be” (e.g. had done)
+# ACT, PLUPERF, the verb "do" (e.g. had done)
 ACT-DO-PLUPERF-1SG: (had done)
 ACT-DO-PLUPERF-2SG: (had done)
 ACT-DO-PLUPERF-3SG: (had done)
@@ -664,54 +518,15 @@ AUX: (ACT-BE-PRES|ACT-BE-PAST|ACT-BE-PERF|ACT-BE-PLUPERF|
   ACT-DO-PRES|ACT-DO-PAST|ACT-DO-PERF|ACT-DO-PLUPERF)
 #
 #
-# 2.5. Diathesis
+# 5. Diathesis
 #
-# 2.4.1. Active
-# Active: unmarked.
-# See the personal marking (above), and moods, tense forms, and verbal 
-# nominal forms below.
+# 5.1. Active
 #
+# Active is unmarked.
 #
-# 2.4.2. Passive
-# Passive: complex tense forms formed with the auxiliary “be” and 
-# its various tense forms.
+# 5.2. Passive
 #
-# The passive of the second person is the dictionary form of verbs.
-# The compound passive forms: having been & PCPL-II: having been gone.
-# The perphrastiv passive forms are formed with some auxiliaries,
-# and for that reason, inflection of auxiliaries has to be presented
-# before definitions.
-#
-#PASS, INF-PRES
-#to have been & PCPL-II: to have been gone:
-#PASS-PRES: ((have|has) been PCPL-PCP-II)
-#	
-# Passive, infinitive present (to be called):
-# PASS-INF-PRES: (to be (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B))
-# 
-#PASS, INF-PERF
-#to be & PCPL-PAST: #to be gone
-#
-# Passive, infinitive, perfect (to have been called)
-# PASS-INF-PERF: (to have been (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B)) 
-#
-# Passive, participle, perfect (called)
-# (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B)) 
-#
-# Passive, particple, present (being called)
-# PASS-PCPL-PRES: (being (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B))
-##
-# Passive, compound participle, past (having been called)
-# PASS-PCPL-PRES: (being (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B))
-#
-#PASS, PCPL-I: being gone
-#being & PCPL-PAST
-#
-# Passive, participle, perfect, perifrastic (being called)
-# PASS-PCPL-PERF: ((VERB-PCPL-PRES-A|VERB-PCPL-PRES-B) 
-#  (being (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B)))
-#
-# 2.4.3. Rules for forming passive forms
+# 5.3. Rules for forming passive forms:
 #
 PASS-PRES: (ACT-BE-PRES PCPL-II)
 PASS-PAST: (ACT-BE-PAST PCPL-II)
@@ -738,21 +553,17 @@ PASS-COND: (PASS-COND-I|PASS-COND-II)
 VERB-PASS: (PASS-TENSE|PASS-TENSE-PROG|PASS-COND-I)
 #
 #
-# 2.6. Moods
+# 6. Moods
 #
-# 2.6.1. Indicative
+# 6.1. Indicative
 #
-# Indicative is not marked formally.
+# Indicative is not formally marked.
 # 
-# 2.6.2. Conditional
 #
-# English has two conditionals separated with tense marking: conditional present and 
-# conditional past:
-# Conditional Present (Conditional I): complex forms formed with the auxiliaries 
-# should and would and the dictionary for of verbs.
-# Conditional Past (Conditional II): complex forms formed with the auxiliaries should and 
-#would and the present tense forms of the auxiliary have.
+# 6.2. Conditional
 #
+# English has two conditionals: Conditional Present (Conditional I), and
+# Conditional Past (Conditional II).
 #
 #Active, conditional I (ACT-COND-I, e.g. should/would go)
 ACT-COND-I-1SG: (should VERBS-BASIC)
@@ -785,77 +596,69 @@ COND-II: ((should|would) (have (PCPL-II)))
 COND: (COND-I|COND-II)
 #
 #
-# 2.6.3. Potential
+# 6.3. Potential
+#
 # There is no grammatical mood such as potential in English. 
-# To be continued.
-POT: (may)
 #
 #
-#2.6.4. Imperative 
+# 6.4. Imperative 
 #
 # Simple and complex forms: simple imperative forms are the dictionary forms 
-# of verbs e.g. come, go. Complex direct or indirect commands are formed 
-# with some auxiliaries denoting various aspects of modalities: e.g. 
-# you should go, you have to go, you must go, etc.
+# of verbs e.g. come, etc. Complex direct or indirect commands are formed 
+# with some auxiliaries: e.g. you should go, you have to go, you must go, etc.
 #
 ACT-IMP: (VERBS-BASIC)
 #
 #
-# 2.6.5. Subjunctive 
+# 6.5. Subjunctive (not included)
 # 
-#to be continued.
+#
+# 7. Tense forms 
+#
+# The tense forms in English are structurally (a) simple and (b) periphrastic.
+# The prefiphrastic tense forms are formed with auxiliaries which are marked
+# with personal inflection.
 #
 #
-# 2.7. Tense forms 
+# 7.1. The simple basic tense forms:
 #
-# The tense forms in English are structurally simple and periphrastic.
-# The prefiphrastic forms are formed with auxiliaries which are marked
-# with personal inflecion.
+# 7.1.1. Present (PRES): 
 #
-#
-# 2.7.1. The simple basic tense forms
-#
-#(a) Present (PRES): 
-# the present tense is unmarked. The personal marking concerns the old forms of 
-# the second and third tense forms, and the personal marking of the 3SG forms. 
+# The present tense is unmarked.
 #
 ACT-PRES: ((VERBS-BASIC)()(VERB-PERS))
 #
-# (b) Past (PAST): 
-# The regular simple past tense forms are the same as the PERF-II. In the irregular verbs, the 
-# past tense forms are lexical. 
-# Regular past tense forms are formed with the suffix -ed and the irregular tense forms, see above:
 #
-#ACT-PAST: (VERBS-PAST)
+# 7.1.2. Past (PAST):
+#
+# The regular simple past tense forms are the same as the PERF-II.
+# In the irregular verbs, the past tense forms are defined to be lexical. 
+# Regular past tense forms are formed with the suffix -ed.
+#
+# ACT-PAST: (VERBS-PAST)
 # 
-# Regular and irregular tense forms, see above:
 #
-# (c) The perfect (PERF): 
-# The regular perfect tense form consists of the auxiliary “have” containing regular present
-# tense marking and from the lexical verb in the PCPL-II form (I have called, he has been).
-#Present perfect (have+PRES + PCPL-II: I have called, he has been)
+# 7.1.3. Perfect:
+#
+# The regular perfect tense form consists of the auxiliary "have" 
+# in the regular present tense form and from the lexical verb in the PCPL-II form
+# (cf. IV.2.2.). 
+#
 ACT-PERF: ((have|has) (PCPL-II))
 #
-# (d) Pluperfect:
-# The past tense form of the auxiliary have + the past participle form (PCPL-II) of the lexical
-# verb: had called)
+#
+# 7.1.4. Pluperfect: 
+#
+# The pluperfect form contains the past tense form of the auxiliary "have" and
+# the past participle form (PCPL-II) of the lexical verb.
+#
 ACT-PLUPERF: ((had) (PCPL-II))
 #
-# (d) The pluperfect (PLU-PERF):
-# The regular pluperfect tense form consists of the auxiliary “have” in the past tense form
-# and from the lexical verb in the PCPL-II form (I had called, he had been).
-#PERF-PAST: ((had) (VERB-PCPL-PAST))
+PERF-PAST: ((had) (VERB-PCPL-PAST))
 #
-# (e) Future
-# will ('ll) + V-INF without to particle, all persons
-# (shall + V-INF without to particle, 1SG, 1PL; he will sleep)
 #
-# Future I (Future present: I/we shall be, he/she/you/they will have)
-#FU-PRES: ((shall|will) VERB-INF) => FUT-I
+# 7.1.5. Future
 #
-# Future II (Future past perfect: will/shall + have +PCPL-PRES:
-# I/we shall have had / he/she/it/you/they  will have spoken)
-#FUT-PAST: ((shall|will) (have (VERB-PCPL-PAST)))  => FUT-II
 #
 # Active, future I (ACT, FUT-I, e.g. shall/will go)
 ACT-FUT-I-1SG: (shall VERBS-BASIC)
@@ -889,38 +692,11 @@ ACT-FUT-III: (ACT-FUT-III-1SG|ACT-FUT-III-2SG|ACT-FUT-III-3SG|
 #
 ACT-FUT: (ACT-FUT-I|ACT-FUT-II|ACT-FUT-III)
 ACT-TENSE: (ACT-PRES|ACT-PERF|ACT-PLUPERF|ACT-FUT)
-# ACT-PAST puuttuu.
 FUT: (ACT-FUT-I|ACT-FUT-II)
 #
 #
-# 2.7.2.The progressive tense forms
+# 7.2.1. Active, progressive present (ACT-PRES-PROG):
 #
-# (a) Progressive present: 
-# Perifrastic tense form formed with the present tense forms of the auxiliary “be” and the
-# PCPL-I of the lexical verb in the dictionary form (he is writing). 
-# PRES-PROG: ((am|is|are) (VERB-PCPL-PRES-A|VERB-PCPL-PRES-B))
-#
-# (b) Progressive past: 
-# Perifrastic tense forms formed with the past tense forms of the auxiliary “be” and the
-# PCPL-I in the lexical main verb in the dictionary form (he was running).
-# PAST-PROG: ((was|were) (VERB-PCPL-PRES-A|VERB-PCPL-PRES-B))
-#
-# (c) The progressive perfect: 
-# Perifrastic tense form formed with the present tense forms of the auxiliary “have”, 
-# the PCPL-II form of the auxiliary “be” and the PCPL-I form of the lexical verb 
-# in the dictionary form (he has been singing).
-# PERF-PRES-PROG: (((have|has) been) (VERB-PCPL-PAST-A|VERB-PCPL-PAST-B)) 
-#
-# (d) The progressive pluperfect: 
-# Perifrastic tense form formed with the past tense form of the auxiliary “have”, 
-# the PCPL-II form of the auxiliary “be” and the PCPL-I form of the lexical verb
-# in the dictionary form (he had been talking).
-# PERF-PAST-PROG: ((had) (been) (VERB-PCPL-PRES-A|VERB-PCPL-PRES-B))
-# 
-#
-# 2.8.2. Progressive tense forms
-#
-#Active, progressive present (ACT-PRES-PROG, e.g. am/is/are running)
 ACT-PRES-PROG-1SG: (am PCPL-I)
 ACT-PRES-PROG-2SG: (are PCPL-I)
 ACT-PRES-PROG-3SG: (is PCPL-I)
@@ -930,7 +706,9 @@ ACT-PRES-PROG-3PL: (are PCPL-I)
 ACT-PRES-PROG: (ACT-PRES-PROG-1SG|ACT-PRES-PROG-2SG|ACT-PRES-PROG-3SG|
   ACT-PRES-PROG-1PL|ACT-PRES-PROG-2PL|ACT-PRES-PROG-3PL)
 #
-# Active, progressive past (ACT-PAST-PROG, e.g. was/were running)
+# 
+# 7.2.2. Active, progressive past (ACT-PAST-PROG):
+#
 ACT-PAST-PROG-1SG: (was PCPL-I)
 ACT-PAST-PROG-2SG: (were PCPL-I)
 ACT-PAST-PROG-3SG: (was PCPL-I)
@@ -940,7 +718,9 @@ ACT-PAST-PROG-3PL: (were PCPL-I)
 ACT-PAST-PROG: (ACT-PAST-PROG-1SG|ACT-PAST-PROG-2SG|ACT-PAST-PROG-3SG|
   ACT-PAST-PROG-1PL|ACT-PAST-PROG-2PL|ACT-PAST-PROG-3PL)
 # 
-# Active, progressive perfect ACT-PERF-PROG, e,g, have/has been running)
+# 
+# 9.2.3. Active, progressive perfect ACT-PERF-PROG):
+#
 ACT-PERF-PROG-1SG: (have been PCPL-I)
 ACT-PERF-PROG-2SG: (have been PCPL-I)
 ACT-PERF-PROG-3SG: (has been PCPL-I)
@@ -950,7 +730,8 @@ ACT-PERF-PROG-3PL: (have been PCPL-I)
 ACT-PERF-PROG: (ACT-PERF-PROG-1SG|ACT-PERF-PROG-2SG|ACT-PERF-PROG-3SG|
   ACT-PERF-PROG-1PL|ACT-PERF-PROG-2PL|ACT-PERF-PROG-3PL)
 #
-# Active, progressive pluperfect ACT-PLUPERF-PROG, e,g, have/has been running)
+# 7.2.4. Active, progressive pluperfect ACT-PLUPERF-PROG):
+#
 ACT-PLUPERF-PROG-1SG: (had been PCPL-I)
 ACT-PLUPERF-PROG-2SG: (had been PCPL-I)
 ACT-PLUPERF-PROG-3SG: (had been PCPL-I)
@@ -964,19 +745,13 @@ ACT-PLUPERF-PROG: (ACT-PLUPERF-PROG-1SG|ACT-PLUPERF-PROG-2SG|
 ACT-TENSE-PROG: (ACT-PRES-PROG|ACT-PAST-PROG|ACT-PERF-PROG|ACT-PLUPERF-PROG)
 #
 #
-#ACT-PAST: WN-VERB-PRET
-#ACT-PCPL-I: WN-VERB-PCPL-PERF
-#ACT-PCPL-II: WN-VERB-PCPL-PRES
-#ACT-PERF: 
-#ACT-PLUPERF: 
-#
 VERB-FINITE: (ACT-TENSE|ACT-TENSE-PROG|ACT-COND|
   PASS-TENSE|PASS-TENSE-PROG|PASS-COND)
 # 
 # VERB-NON-FINITE: (INF|PCPL)
 #
-# The Perl-script contains the following rule: #VERB-INF: (to VERB)
-# The file "kwic" in the script-directory contains the link VERB-LIST,
+# The infinitive forms are defined with the following rule: VERB-INF: (to VERB)
+# The file "kwic" in the script-directory contains the link VERB-LIST
 # which introduces the file "eng-verbs-database-may-2017.txt" to be available
 # for connecting the predicate-verbs and ADPOS-CASE relators for examining
 # combinations of predicates and ADPOS-CASE relators in the texts. 
@@ -984,30 +759,15 @@ VERB-FINITE: (ACT-TENSE|ACT-TENSE-PROG|ACT-COND|
 #
 VERB-ALL: (VERBS|VERBS-PRES-3SG|VERBS-PAST|PCPL|VERBS-2SG)
 #
-#VERB-SAMPLE: (ENG-SAMPL-VERB)
+# VERB-SAMPLE: (ENG-SAMPL-VERB)
 #
 #
-# C. Adjectives
+# V. ADPOS-CASE RELATORS: PREPOSITIONS IN ENGLISH 
 #
+# 1. Location of an object: IN, ON and OUT categories: 
 #
-# D. Pronouns
-#
-#
-# E. Particles
-#
-#
-# F. Conjunctions
-#
-#
-# G. Prepositions
-#
-#
-# IV. ADPOS-CASE RELATORS: Prepositions in English
-#
-#1. Locational prepositions
-#1.1. Location of an object: IN, ON and OUT categories 
-#
-#1.1.1. Location of an object in, inside of a closed space (IN-PRP-A, IN-POP-B) and inside a bordered space, in a group, or between objects (IN-PRP-B, IN-POP-B)
+# 1.1. Location of an object in, inside of a closed space (IN-PRP-A, IN-POP-B)
+# and inside a bordered space, in a group, or between objects (IN-PRP-B, IN-POP-B):
 #
 IN-C: 
 IN-PRP-A: ((in (a|an|the|my|your|his|her|its|our|their)
@@ -1015,7 +775,7 @@ IN-PRP-A: ((in (a|an|the|my|your|his|her|its|our|their)
   (within|inside|in))
 IN-PRP-A-XX: (IN-PRP-A (\w+))
 IN-POP-A:
-IN-PRP-B: ((in (the (bottom|middle|midst|center)) (of))|
+IN-PRP-B: ((in (the (bottom|middle|midst|centre)) (of))|
   (round about between)|
   (in (the|my|your|his|her|our|their|its) (hand|hands) (of))|
   (between|amid|among|amongst|midst))
@@ -1026,7 +786,9 @@ IN: (IN-ADP)
 IN-XX: (IN (\w+))
 INCLUDE: eng-disamb-IN-EXCL.spec
 #
-#1.1.2. Location of an object on or in touch with the surface of an object (ON-PRP-C, ON-POP-C), and outside of an object or a landmark,  not far from them (ON-PRP-D, ON-POP-D)
+# 1.2.Location of an object on or in touch on the surface of an object
+# (ON-PRP-C, ON-POP-C), and outside of an object or a landmark, not far from them
+# (ON-PRP-D, ON-POP-D):
 #
 ON-C: 
 ON-PRP-C: (against|beneath|beside|on|upon|under|underneath)
@@ -1046,10 +808,12 @@ ON: (ON-ADP)
 ON-XX: (ON-ADP (\w+))
 INCLUDE: eng-disamb-ON-EXCL.spec
 #
-# The terms front, midst, inside, and outside have to be evaluated wrt 
+# The terms front, midst, inside, and outside have to be evaluated with respect to 
 # connections with prepositions.
 #
-#1.1.3. Location of an object outside (OUT) of or at a distance from an object or a landmark (OUT-PRP-E OUT-POP-E), and outside of another object, the distance not specified (far or near) (OUT-PRP-F, OUT-POP-F)
+# 1.3. Location of an object outside (OUT) of or at a distance from an object
+# or a landmark (OUT-PRP-E OUT-POP-E), and outside of another object,
+# the distance not specified (far or near) (OUT-PRP-F, OUT-POP-F):
 #
 OUT-C:
 OUT-PRP-E: (((close|next) to)|(above (to|unto|upon))|
@@ -1078,9 +842,13 @@ OUT: (OUT-PRP-E|OUT-PRP-F)
 OUT-XX: (OUT (\w+))
 INCLUDE: eng-disamb-OUT-EXCL.spec
 #
-#1.2. Movement of an object from in, on, outside of another object 
-#(delocation)
-#1.2.1. Movement of an object from in, inside of a closed space (DE-IN-PRP-A, DE-IN-POP-A) and from inside a partly closed space or between other objects (DE-IN-PRP-B, DE-IN-POP-B)
+#
+# 2. Movement of an object from in, on, outside of another object 
+# (delocation):
+#
+# 2.1. Movement of an object from in, inside of a closed space
+# (DE-IN-PRP-A, DE-IN-POP-A) and from inside a partly closed space or between
+# other objects (DE-IN-PRP-B, DE-IN-POP-B):
 #
 DE-IN-C: 
 DE-IN-PRP-A: ((from (the|my|your|his|her|its|our|their) 
@@ -1089,7 +857,7 @@ DE-IN-PRP-A: ((from (the|my|your|his|her|its|our|their)
 DE-IN-PRP-A-XX: (DE-IN-PRP-A (\w+))
 DE-IN-POP-A:
 DE-IN-PRP-B: (((from|off|out) (between|amid|among|amongst|in))|
-  ((off|from|out) (the) (middle|midst|center|bottom|hand|hands) (of)))
+  ((off|from|out) (the) (middle|midst|centre|bottom|hand|hands) (of)))
 DE-IN-PRP-B-XX: (DE-IN-PRP-B (\w+))
 DE-IN-POP-B: 
 DE-IN: (DE-IN-PRP-A|DE-IN-PRP-B)
@@ -1097,8 +865,10 @@ DE-IN-XX: (DE-IN (\w+))
 #
 INCLUDE: eng-disamb-DE-IN-EXCL.spec
 #
-# 1.2.2. Movement of an object from on smth: movement of an object from on or in touch with the surface of another object or a landmark (DE-ON-PRP-C, 
-# DE-ON-POP-C), or not far from them (DE-ON-PRP-D, DE-ON-POP-D)
+#
+# 2.2. Movement of an object from on smth: movement of an object from on or
+# in touch with the surface of another object or a landmark (DE-ON-PRP-C, 
+# DE-ON-POP-C), or not far from them (DE-ON-PRP-D, DE-ON-POP-D):
 #
 DE-ON-C:
 DE-ON-PRP-C: ((from|off|out) (against|beneath|beside|on|upon|under|underneath))
@@ -1119,7 +889,9 @@ DE-ON-XX: (DE-ON (\w+))
 #
 INCLUDE: eng-disamb-DE-ON-EXCL.spec
 #
-#1.2.3. Delocation of an object from outside of another object or  a landmark (DE-OUT-PRP-E, DE-OUT-POP-E), and from outside of an object or a landmark, the distance is vaguely expressed (DE-OUT-PRP-F, DE-OUT-POP-F)
+# 2.3. Delocation of an object from outside of another object or  a landmark
+# (DE-OUT-PRP-E, DE-OUT-POP-E), and from outside of an object or a landmark,
+# the distance is vaguely expressed (DE-OUT-PRP-F, DE-OUT-POP-F):
 #
 DE-OUT-C: 
 DE-OUT-PRP-E: ((from|off|out) (above|after|at|before|behind|below|
@@ -1149,8 +921,10 @@ DE-OUT-XX: (DE-OUT (\w+))
 INCLUDE: eng-disamb-DE-OUT-EXCL.spec
 #
 #
-#1.3. Movement of an object into, onto, and to outside of smth 
-#1.3.1. Movement of an object into, to inside of a closed space (DIR-IN-PRP-A and DIR-IN-POP-A) and to inside a partly closed space or between other objects (DIR-IN-PRP-B and DIR-IN-POP-B).
+# 3. Movement of an object into, onto, and to outside of smth 
+# 3.1. Movement of an object into, to inside of a closed space
+# (DIR-IN-PRP-A and DIR-IN-POP-A) and to inside a partly closed space
+# or between other objects (DIR-IN-PRP-B and DIR-IN-POP-B):
 # 
 AD-IN-C: 
 AD-IN-PRP-A: (((into|to) (the|my|your|his|her|its|our|their)
@@ -1159,7 +933,7 @@ AD-IN-PRP-A: (((into|to) (the|my|your|his|her|its|our|their)
 AD-IN-PRP-A-XX: (AD-IN-PRP-A (\w+))
 AD-IN-POP-A:
 AD-IN-PRP-B: (((down|into|to|unto|up) (between|amid|among|amongst|midst|in))|
-  ((into|to) (the) (middle|midst|center))|
+  ((into|to) (the) (middle|midst|centre))|
   (over into)|
   (up (among|in))|
   (out into)|
@@ -1173,11 +947,13 @@ AD-IN-XX: (AD-IN (\w+))
 #
 INCLUDE: eng-disamb-AD-IN-EXCL.spec
 #
-#1.3.2. Movement of an object on or in touch with the surface of another object (DIR-ON-PRP-IT, DIR-ON-POP-IT), and outside of an object, not far from it (DIR-ON-PRP-NF and DIR-ON-POP-NF). 
+# 3.2. Movement of an object on or in touch with the surface of another object
+# (DIR-ON-PRP-IT, DIR-ON-POP-IT), and outside of an object, not far from it
+# (DIR-ON-PRP-NF and DIR-ON-POP-NF): 
 #
 AD-ON-C: 
 AD-ON-PRP-C: ((onto (against|on|upon))|
-  (onto (the) (bottom|head|edge|end|ends|side|sides|top|tops))|
+  (onto (the) (bottom|head|heads|edge|edges|end|ends|side|sides|top|tops))|
   (out (on|upon))|
   (over (against|upon))|
   (to|unto))
@@ -1198,9 +974,9 @@ AD-ON-XX: (AD-ON (\w+))
 #
 INCLUDE: eng-disamb-AD-ON-EXCL.spec
 #
-#1.3.3. Movement of an object outside of the  object (DIR-OUT-PRP-E, 
+# 3.3. Movement of an object outside of the  object (DIR-OUT-PRP-E, 
 # DIR-OUT-POP-E), and outside of an object, the distance or relationship 
-# with the object is vaguely expressed (DIR-OUT-PRP-F and DIR-OUT-POP-F). 
+# with the object is vaguely expressed (DIR-OUT-PRP-F and DIR-OUT-POP-F):
 #
 AD-OUT-C:
 AD-OUT-PRP-E: (((down|to|unto|up) (above|after|at|before|behind|beyond|
@@ -1242,10 +1018,10 @@ AD-LOC-XX: (AD-LOC (\w+))
 INCLUDE: eng-disamb-AD-OUT-EXCL.spec
 INCLUDE: eng-disamb-ALL-EXCL.spec
 #
-#INCLUDE: eng-disamb-AD-LOC-EXCL.spec
 #
-# 1. 3.4. Translocation of an object: 
-# 1.3.4.1. Translocation regard to closed or partly closed space or between objects
+# 4. Translocation of an object: 
+#
+# 4.1. Translocation regard to closed or partly closed space or between objects:
 #
 TRNS-INT-C: 
 TRNS-INT-PRP: (across|through|throughout|via)
@@ -1253,7 +1029,8 @@ TRNS-INT-POP:
 TRNS-INT: (TRNS-INT-PRP)
 TRNS-INT-XX: (TRNS-INT (\w+))
 #
-# 1.3.4.2. Translocation of an object with regard to open space
+#
+# 4.2. Translocation of an object with regard to open space
 #
 TRNS-EXT-C:
 TRNS-EXT-PRP: (along|by|over|past|till|toward|towards|until|
@@ -1266,14 +1043,16 @@ TRNS-EXT: (TRNS-EXT-PRP)
 TRNS-EXT-XX: (TRNS-EXT (\w+))
 TRNS: (TRNS-EXT|TRNS-INT)
 #
-#INCLUDE: eng-disamb-adverbs-EXCL.txt
+# Some of these carry vaguely information on direction of movements,
+# c.f. e.g. "toward".
+#
+INCLUDE: eng-disamb-TRNS-EXCL.spec
+#
+#
+# 5. Terms denoting special temporal situations):
 #
 # Eliminating temporal expressions from the database:
 # 
-INCLUDE: eng-disamb-TRNS-EXCL.spec
-#
-#2. Terms denoting special temporal situations):
-#
 TIME-C: 
 TIME-PRP: ((in the time of)|
   ((at|in|for|on) (the) (afternoon|day|days|evening|
@@ -1283,9 +1062,16 @@ TIME-POP:
 TIME: (TIME-PRP)
 TIME-XX: (TIME (\w+))
 #
+# Disambiguating temporal words from the database:
+#
 INCLUDE: eng-disamb-TEMP-WORDS.spec
 #
-#3. Prepositions denoting various circumstantial relationships (CIRC) (reason, motive, stimulus, reaction. support, accompaniment, close relationship, states of affairs, hindrance, opposition, standards, measurements, strengthening expressions, exceptions, negative condition, partiality or involvement of an eventuality, agent, ground, source, origin, ingredient)
+#
+# 6. Prepositions denoting various circumstantial relationships (CIRC)
+# (reason, motive, stimulus, reaction. support, accompaniment, close relationship,
+# states of affairs, hindrance, opposition, standards, measurements, strengthening
+# expressions, exceptions, negative condition, partiality or involvement of
+# an eventuality, agent, ground, source, origin, ingredient)
 #
 CIRC-C: 
 CIRC-PRP: (besides|except|despite (against)|of|(in spite of)|(because of)|
@@ -1304,13 +1090,14 @@ CIRC-POP:
 CIRC: (CIRC-PRP)
 CIRC-XX: (CIRC (\w+))
 #
-# 4. Single lexical prepositions
+#
+# 7. Single lexical prepositions
 PRP-SGNL: (above|across|after|against|along|amid|among|amongst|around|
   at|before|behind|below|beneath|beside|between|beyond|by|despite|
   down|during|except|for|from|in|inside|into|midst|near|nearer|nearby|
   nigh|of|off|on|onto|opposite|out|outside|over|past|regarding|round|
   since|through|throughout|till|to|toward|towards|under|underneath|
- y until|unto|up|upon|with|within|without)
+  until|unto|up|upon|with|within|without)
 #
 IN-SGNL:  (in|within|inside|between|amid|among|amongst|midst)
 #
@@ -1333,7 +1120,8 @@ AD-ON-SGNL: ((down|into|to|up) (between|amid|among|amongst|midst|on|upon))
 AD-OUT-SGNL: (((to|onto) (against|under|underneath))|
   (onto)|((down|into|to|up) (beneath|beside|nigh)))
 #
-#5. Complex prepositions
+#
+# 8. Complex prepositions
 #
 IN-CMPL: ((in the eye of)|
   (in the eyes of)|
@@ -1344,7 +1132,7 @@ IN-CMPL: ((in the eye of)|
   (in the bottom)|
   (in the middle)|
   (in the midst)|
-  (in the center)|
+  (in the centre)|
   (in the middle of)|
   (in the midst of)|(at the bottom))
 #
@@ -1375,7 +1163,7 @@ DE-IN-CMPL: ((from within)|
   (from out of)|
   (from (the) middle of)|
   (from (the) midst of)|
-  (from (the) center of)|
+  (from (the) centre of)|
   (from (the) out of)|
   (off the midst (of))|
   (out the middle (of))|
@@ -1417,7 +1205,7 @@ AD-IN-CMPL: ((down (the) eye of)|
   (into among)|
   (into amongst)|
   (into midst)|
-  (into (the) center)|
+  (into (the) centre)|
   (to (the) middle)|
   (into (the) middle)|
   (into midst)|
@@ -1440,7 +1228,7 @@ AD-IN-CMPL: ((down (the) eye of)|
   (to the midst (of))|
   (to the mouth of)|
   (to amid)|(to between)|
-  (to (the) center)|
+  (to (the) centre)|
   (to the midst of)|
   (to the mouth of)|
   (unto the midst of)|
