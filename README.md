@@ -1,6 +1,6 @@
 # sem-cats
 
-Semantic categories of adpositions in the English and Finnish languages.
+**Semantic categories of prepositions in English and case marking and adpositions in Finnish**
 
 This repository relates to the book:
 
